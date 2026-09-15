@@ -1,13 +1,27 @@
+# Virtual workspace. The root previously declared a `[package]` with no `src/`,
+# which made `cargo metadata` fail with "no targets specified in the manifest"
+# before any member could even be looked at.
+#
+# The repository name `lls-protocol` does not currently correspond to a crate.
+# The wire types live in `server/src/protocol.rs` and `server/src/packet.rs`;
+# extracting them into a shared `protocol/` member is the natural next step and
+# is what would claim the `lls-protocol` name on crates.io.
 [workspace]
 resolver = "3"
 members = ["client", "server"]
 
-[package]
-name = "lls-protocol"
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+repository = "https://github.com/Crown-OS/lls-protocol"
+homepage = "https://github.com/Crown-OS/lls-protocol"
+authors = ["marvelxcodes <ramakrishnan0046@gmail.com>"]
 
-[dependencies]
+# Declared here so `{ workspace = true }` in the members resolves. The members
+# already referenced this table; it had never been written.
+[workspace.dependencies]
 serde = "1.0.228"
-tokio = { version = "1.52.3", features = ["net"] }
+tokio = { version = "1", features = ["net"] }
 tokio-stream = { version = "0.1.18", features = ["net"] }
