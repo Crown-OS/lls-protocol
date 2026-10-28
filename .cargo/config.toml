@@ -1,0 +1,10 @@
+[alias]
+lint = "clippy --workspace --all-targets --all-features -- -D warnings"
+
+# Android 15 devices may run with 16 KiB pages; a library aligned for 4 KiB pages will not load
+# on them. (lld has no `--separate-loadable-segments`; the page size alone aligns its segments.)
+[target.aarch64-linux-android]
+rustflags = [
+    "-C", "target-feature=+neon",
+    "-C", "link-arg=-Wl,-z,max-page-size=16384",
+]

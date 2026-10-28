@@ -1,0 +1,43 @@
+[package]
+name = "llts-android"
+description = "CrownConnect for Android: the llts node, driver and hardware media pipelines behind a JNI handle"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "llts_android"
+crate-type = ["cdylib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+llts-core = { workspace = true }
+llts-node = { workspace = true }
+llts-signaling = { workspace = true }
+llts-transport = { workspace = true }
+llts-wire = { workspace = true }
+blake3 = { workspace = true }
+crossbeam-queue = { workspace = true }
+data-encoding = { workspace = true }
+jni = { workspace = true }
+libc = { workspace = true }
+log = { workspace = true }
+postcard = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true, features = ["std"] }
+zeroize = { workspace = true }
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = { workspace = true }
+ndk = { workspace = true, features = ["media", "audio", "nativewindow", "api-level-29"] }
+opus = { workspace = true, optional = true }
+
+[features]
+default = ["opus"]
+opus = ["dep:opus"]

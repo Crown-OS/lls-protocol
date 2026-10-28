@@ -1,27 +1,108 @@
-# Virtual workspace. The root previously declared a `[package]` with no `src/`,
-# which made `cargo metadata` fail with "no targets specified in the manifest"
-# before any member could even be looked at.
-#
-# The repository name `lls-protocol` does not currently correspond to a crate.
-# The wire types live in `server/src/protocol.rs` and `server/src/packet.rs`;
-# extracting them into a shared `protocol/` member is the natural next step and
-# is what would claim the `lls-protocol` name on crates.io.
 [workspace]
 resolver = "3"
-members = ["client", "server"]
+members = [
+    "crates/llts-core",
+    "crates/llts-signaling",
+    "crates/llts-node",
+    "crates/llts-android",
+    "crates/llts-bench",
+    "crates/llts-transport",
+    "crates/llts-wire",
+]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.88"
-license = "MIT"
-repository = "https://github.com/Crown-OS/lls-protocol"
-homepage = "https://github.com/Crown-OS/lls-protocol"
-authors = ["marvelxcodes <ramakrishnan0046@gmail.com>"]
+rust-version = "1.97"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/crown-os/llts-protocol"
 
-# Declared here so `{ workspace = true }` in the members resolves. The members
-# already referenced this table; it had never been written.
 [workspace.dependencies]
-serde = "1.0.228"
-tokio = { version = "1", features = ["net"] }
-tokio-stream = { version = "0.1.18", features = ["net"] }
+llts-core = { path = "crates/llts-core" }
+llts-transport = { path = "crates/llts-transport" }
+llts-signaling = { path = "crates/llts-signaling" }
+llts-node = { path = "crates/llts-node" }
+llts-wire = { path = "crates/llts-wire" }
+
+anyhow = "1.0.100"
+thiserror = { version = "2.0.18", default-features = false }
+bitflags = "2.10"
+crossbeam-queue = "0.3.12"
+reed-solomon-simd = { version = "3.1.0", default-features = false }
+snow = { version = "0.10.0", features = ["risky-raw-split"] }
+chacha20poly1305 = "0.11.0"
+socket2 = "0.6.5"
+libc = "0.2"
+serde = { version = "1.0.228", features = ["derive"] }
+ciborium = "0.2.2"
+strum = { version = "0.28.0", features = ["derive"] }
+tokio = { version = "1.52.3", default-features = false }
+jni = "0.22.4"
+blake3 = "1.8"
+zeroize = { version = "1.8", features = ["zeroize_derive"] }
+postcard = { version = "1.1", default-features = false, features = ["alloc"] }
+data-encoding = "2.9"
+getrandom = { version = "0.3", features = ["std"] }
+heapless = { version = "0.9", features = ["serde"] }
+curve25519-dalek = { version = "4.1", default-features = false }
+serde_json = "1.0"
+log = "0.4"
+android_logger = "0.15"
+ndk = { version = "0.9", default-features = false }
+opus = "0.4"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+todo = "deny"
+unimplemented = "deny"
+redundant_clone = "deny"
+large_enum_variant = "warn"
+needless_pass_by_value = "warn"
+trivially_copy_pass_by_ref = "warn"
+cast_possible_truncation = "warn"
+cast_lossless = "warn"
+missing_const_for_fn = "warn"
+
+# The crypto and erasure-coding kernels are unusably slow unoptimised, and the tests push hundreds
+# of thousands of packets through them.
+[profile.dev.package.reed-solomon-simd]
+opt-level = 3
+
+[profile.dev.package.chacha20]
+opt-level = 3
+
+[profile.dev.package.poly1305]
+opt-level = 3
+
+[profile.dev.package.blake3]
+opt-level = 3
+
+# The protocol tests push hundreds of thousands of packets through the engine; unoptimised they
+# spend a minute doing it.
+[profile.test]
+opt-level = 1
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = "debuginfo"
+
+# The Android library aborts on panic, as fileshare's does: every JNI entry already runs inside
+# jni's catch_unwind, but a panic there means the node's state is half-updated, and a clean native
+# crash is easier to diagnose than a Java exception over a runtime that can no longer be trusted.
+[profile.android]
+inherits = "release"
+panic = "abort"
+
+[profile.bench]
+inherits = "release"
+debug = true

@@ -1,0 +1,17 @@
+[package]
+name = "llts-bench"
+description = "Latency harness for the LLTS low-latency media link"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+llts-core = { workspace = true }
+llts-transport = { workspace = true }
+llts-wire = { workspace = true }
+anyhow = { workspace = true }

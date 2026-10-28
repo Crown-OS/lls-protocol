@@ -1,102 +1,56 @@
-# lls-protocol
+# llts-protocol
 
-A low-latency audio/video streaming protocol for
-[CrownOS](https://github.com/Crown-OS) — the transport intended to carry screen
-mirroring, second screen and camera sharing between a phone and the desktop.
+Low-latency video transport for CrownOS continuity: a Linux laptop and an Android device sharing a
+screen or a camera over LAN Wi-Fi or USB, in either direction.
 
-**Status: Skeleton. It compiles; almost nothing is implemented.** Roughly 119
-lines of real code. See [What is a stub](#what-is-a-stub).
+## Targets
 
-## What "lls" stands for
+| Metric | Target |
+| --- | --- |
+| Protocol latency, frame in to frame out | ≤ 12 ms Wi-Fi, ≤ 8 ms USB |
+| Glass-to-glass, Linux screen to Android display | ≤ 40 ms at 120 Hz |
+| Glass-to-glass, Android camera to Linux | ≈ 55 ms, ~30 ms of it camera hardware |
 
-Not stated anywhere in the source. Most likely **Low-Latency Streaming**, based
-on the module names (`streaming`, `signaling`, `nvenc`, `packet`, `discovery`,
-`reorder_buffer`) and the features it lines up with. *That is an inference.*
+Only the first is a CI gate; the other two need a photodiode rig.
 
-Despite the repository description, **no code here references `crowncrate`, and
-no code in `crowncrate` references this.** The apparent division of labour is
-that `crowncrate` is the low-bandwidth control plane (TCP, CBOR) and this is the
-media plane (UDP, RTP-shaped) — but nothing states it.
+## Crates
 
-## Design
+| Crate | Role |
+| --- | --- |
+| `llts-wire` | Byte layout. `no_std`, allocation-free, fuzzable in isolation. |
+| `llts-core` | Sans-I/O protocol engine: packetise, repair, congestion control, playout. |
+| `llts-media` | Capture, encode, decode and present, with per-vendor Linux backends. |
+| `llts-transport` | UDP, QUIC and USB drivers, plus the Noise handshake. |
+| `llts-android` | JNI bridge for the Android app. |
+| `llts-signaling` | Device discovery and the control-action vocabulary. |
+| `llts-node` | Sans-I/O orchestrator: paired peers, pairing, autoconnect, state sync, feature negotiation. |
 
-UDP transport with an RTP-shaped packet header:
+## Working on it
 
-```rust
-pub enum PacketType { Audio = 0, Video = 1 }
-
-pub enum FrameRateMode { Low = 30, Standard = 60, Smooth = 90, SuperSmooth = 120 }
-
-pub struct MediaPacket {
-    pub packet_type: PacketType,
-    /// Spot missing packets.
-    pub sequence_number: u16,
-    /// Sampling instant of the first octet.
-    /// Audio 8 kHz, video 90 kHz. At 60 fps this advances 3000 per frame.
-    pub timestamp: u32,
-    /// For video: the last packet of a frame — tells the decoder to render.
-    pub marker: bool,
-    /// Identifies the origin of a media stream.
-    pub ssrc: u32,
-}
+```sh
+just              # lint + test
+just lint         # clippy with -D warnings, plus a rustfmt check
+just bench        # loopback latency measurement, exits non-zero if over budget
+just bench-sweep  # the same across the loss rates the repair policy covers
+just android      # build the .so into the Gradle module
 ```
 
-Those are the RFC 3550 RTP header fields verbatim, including the standard clock
-rates.
+## Measured today
 
-`server/src/util/reorder_buffer.rs` is a `BTreeMap<u16, MediaPacket>` jitter
-buffer — the only part of the crate with real logic, and only `insert` is
-implemented.
+`llts-bench` runs two protocol engines over real loopback sockets with a synthetic encoder, at
+1080p-scale frames (25 kB, 60 Hz, 12 Mbit/s). Protocol latency is encode-submit to
+frame-presented, p99 over 300 frames:
 
-## What is a stub
+| Injected loss | p99 | Frames delivered | Repair used |
+| --- | --- | --- | --- |
+| none | 4.9 ms | 300 / 300 | none — no parity, no retransmits |
+| 1 % | 5.4 ms | 300 / 300 | 60 fragments from parity |
+| 2 % | 5.4 ms | 300 / 300 | 159 fragments from parity |
+| 5 % | 6.3 ms | 300 / 300 | 300 fragments from parity |
 
-- `client/src/lib.rs` — 0 bytes
-- `server/src/{config,signaling,streaming}.rs` — 0 bytes
-  (`streaming.rs` is also not declared in `lib.rs`)
-- `server/src/nvenc/mod.rs`, `server/src/platform/mod.rs` — 0 bytes
-- Both `main.rs` files — `println!("Hello, world!")`
-- `MediaPacket::parse()` — empty, private, no arguments
-- `DiscoveredDevice::discover()` — always returns an empty `Vec`
-- `Connection::get_byte_stream()` — empty
-- `serde` is declared and nothing derives it
+The clean-link row is the one that matters most: the adaptive policy spends nothing at all when
+the link is quiet, which is the whole reason it is not a fixed rate.
 
-`client` does not depend on `server`, and all shared types live inside `server` —
-so for a repository named "protocol", there is currently no shared protocol
-crate.
-
-## Suggested order of work
-
-1. Move `packet`, `protocol` and `discovery` into a shared crate that both
-   `client` and `server` depend on. That crate is also what would claim the
-   `lls-protocol` name — today the repository name corresponds to no crate.
-2. Implement `MediaPacket::parse` and a matching serialiser.
-3. Complete the reorder buffer — it needs a drain with a playout deadline.
-
-The two items that used to head this list are done: the root is now a virtual
-workspace with a real `[workspace.dependencies]` table, and `Connection::connect`
-binds with `UdpSocket::bind` instead of the `UdpSocket::try_from(IpAddr)` that
-never compiled.
-
-## Build and run
-
-```bash
-cargo build
-cargo run -p lls-server      # prints "Hello, world!"
-cargo run -p lls-client      # prints "Hello, world!"
-```
-
-Rust 1.88+ (pinned in `rust-toolchain.toml`). No native or CrownOS dependencies,
-so no dev overlay is needed. There are no tests.
-
-Nothing is publishable yet: `client/src/lib.rs` and four of the server's modules
-are zero-byte files, so a release would ship empty crates.
-
-## Contributing
-
-See the organization-wide
-[contribution guide](https://github.com/Crown-OS/crownOs/blob/main/CONTRIBUTING.md).
-Default branch here is **`main`**.
-
-## License
-
-Licensed under the [MIT License](LICENSE).
+`unwrap` and `expect` are denied outside tests, `unsafe` is confined to the GPU, batch-I/O and FFI
+modules, and every library crate exposes exactly one `thiserror` enum. `anyhow` belongs in
+`llts-bench` and examples only.

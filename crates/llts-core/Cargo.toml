@@ -1,0 +1,17 @@
+[package]
+name = "llts-core"
+description = "Sans-I/O protocol engine for the LLTS low-latency media link"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+llts-wire = { workspace = true }
+crossbeam-queue = { workspace = true }
+reed-solomon-simd = { workspace = true }
+thiserror = { workspace = true, features = ["std"] }

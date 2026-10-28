@@ -1,0 +1,22 @@
+[package]
+name = "llts-signaling"
+description = "Sans-IO signalling for CrownConnect: control messages, mesh state and private discovery"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bitflags = { workspace = true }
+blake3 = { workspace = true }
+data-encoding = { workspace = true }
+getrandom = { workspace = true }
+heapless = { workspace = true }
+postcard = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true, features = ["std"] }
+zeroize = { workspace = true }
