@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// What kind of hardware a device is, matching the `crownconnect` IPC `DeviceClass`.
+/// What kind of hardware a device is, matching the `crownlink` IPC `DeviceClass`.
 ///
 /// The discriminants are what discovery beacons carry, so they never change.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

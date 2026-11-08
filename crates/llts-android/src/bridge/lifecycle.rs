@@ -12,7 +12,7 @@ use crate::runtime::Instance;
 /// Starts a runtime from a JSON [`StartConfig`], keeping its identity and trust store under
 /// `filesDir`, and returns its handle.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeStart<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeStart<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     config_json: JString<'local>,
@@ -34,7 +34,7 @@ pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeStart<'local>(
 /// Stops the runtime and waits for its thread. A `nativeNextEvent` blocked on this handle then
 /// returns `null`; the handle names nothing afterwards.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeStop<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeStop<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,
@@ -50,7 +50,7 @@ pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeStop<'local>(
 /// Blocks until the runtime has an event, and returns it as JSON; `null` once it has stopped.
 /// Call it from one dedicated thread.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeNextEvent<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeNextEvent<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,

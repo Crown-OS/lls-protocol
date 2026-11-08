@@ -35,7 +35,7 @@ impl Default for BackoffPolicy {
     }
 }
 
-/// Policy knobs; [`NodeConfig::default`] is what CrownConnect ships with.
+/// Policy knobs; [`NodeConfig::default`] is what CrownLink ships with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NodeConfig {
     /// Features a newly paired device is allowed until the user changes them.

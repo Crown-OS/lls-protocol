@@ -19,7 +19,7 @@ fuzz target="packet_view":
 # Builds the Android .so straight into the Gradle module's jniLibs directory. The `android`
 # profile is release with `panic = "abort"`.
 android:
-    cargo ndk -t arm64-v8a --platform 29 -o ../crownconnect-android/app/src/main/jniLibs build --profile android -p llts-android
+    cargo ndk -t arm64-v8a --platform 29 -o ../crownlink-android/app/src/main/jniLibs build --profile android -p llts-android
 
 # Fails unless the .so exports exactly the `external fun`s Llts.kt declares.
 android-symbols: android
@@ -27,10 +27,10 @@ android-symbols: android
     set -euo pipefail
     ndk="${ANDROID_NDK_HOME:?set ANDROID_NDK_HOME to the NDK}"
     nm="$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
-    library=../crownconnect-android/app/src/main/jniLibs/arm64-v8a/libllts_android.so
-    kotlin=../crownconnect-android/app/src/main/java/com/crownos/connect/llts/Llts.kt
+    library=../crownlink-android/app/src/main/jniLibs/arm64-v8a/libllts_android.so
+    kotlin=../crownlink-android/app/src/main/java/com/crownos/link/llts/Llts.kt
     diff \
-        <("$nm" -D --defined-only "$library" | awk '{ print $3 }' | grep '^Java_' | sed 's/^Java_com_crownos_connect_llts_Llts_//' | sort) \
+        <("$nm" -D --defined-only "$library" | awk '{ print $3 }' | grep '^Java_' | sed 's/^Java_com_crownos_link_llts_Llts_//' | sort) \
         <(grep -o 'external fun native[A-Za-z]*' "$kotlin" | sed 's/^external fun //' | sort)
     echo "JNI symbols match Llts.kt"
 

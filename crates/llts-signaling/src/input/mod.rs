@@ -1,4 +1,4 @@
-//! Remote input on an llts Input stream, in the wire format `crownconnect-linux` defined.
+//! Remote input on an llts Input stream, in the wire format `crownlink-linux` defined.
 //!
 //! Each input-stream batch is a run of framed [`InputMessage`]s, `[len: u8][postcard message]`
 //! each, ending in [`InputEvent::Frame`], so one batch is one moment of input. A key-state

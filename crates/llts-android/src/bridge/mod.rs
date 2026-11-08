@@ -1,4 +1,4 @@
-//! The JNI surface of `com.crownos.connect.llts.Llts`.
+//! The JNI surface of `com.crownos.link.llts.Llts`.
 //!
 //! Every entry point runs inside jni's `with_env`, and every error becomes a Java exception
 //! through [`policy::ThrowJavaException`]: `IllegalArgumentException` for a malformed argument,
@@ -56,7 +56,7 @@ mod tests {
         "nativeDetachSurface",
     ];
 
-    const SYMBOL_PREFIX: &str = "fn Java_com_crownos_connect_llts_Llts_";
+    const SYMBOL_PREFIX: &str = "fn Java_com_crownos_link_llts_Llts_";
 
     const SOURCES: [&str; 6] = [
         include_str!("discovery.rs"),
@@ -94,7 +94,7 @@ mod tests {
     fn the_kotlin_binding_declares_the_same_methods_in_the_same_order() {
         let kotlin = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../../crownconnect-android/app/src/main/java/com/crownos/connect/llts/Llts.kt"
+            "/../../../crownlink-android/app/src/main/java/com/crownos/link/llts/Llts.kt"
         );
         let Ok(source) = std::fs::read_to_string(kotlin) else {
             return;

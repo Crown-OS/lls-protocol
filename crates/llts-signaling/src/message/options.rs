@@ -7,7 +7,7 @@ pub enum Direction {
     FromPeer,
 }
 
-/// A side of a screen, matching the `crownconnect` IPC `Edge`.
+/// A side of a screen, matching the `crownlink` IPC `Edge`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Edge {
     Left,
@@ -28,7 +28,7 @@ pub enum CameraLens {
     Front,
 }
 
-/// Upper bounds for a video stream, matching the `crownconnect` IPC `VideoLimits`.
+/// Upper bounds for a video stream, matching the `crownlink` IPC `VideoLimits`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct VideoLimits {
     pub max_width: u16,

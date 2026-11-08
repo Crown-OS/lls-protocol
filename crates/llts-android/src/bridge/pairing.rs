@@ -12,7 +12,7 @@ use crate::util::device_hex::parse_device_hex;
 
 /// Pairs with the device whose QR offer the camera read.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeScanQr<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeScanQr<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,
@@ -27,7 +27,7 @@ pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeScanQr<'local>(
 /// Opens a pairing window for `seconds`, or the default two minutes when it is not positive;
 /// the QR offer arrives as a `pairingOffer` event.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeBeginPairing<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeBeginPairing<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,
@@ -43,7 +43,7 @@ pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeBeginPairing<'lo
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeCancelPairing<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeCancelPairing<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,
@@ -55,7 +55,7 @@ pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeCancelPairing<'l
 
 /// Starts nearby pairing with a device a `pairableDeviceSeen` event reported at `address`.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativePairNearby<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativePairNearby<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,
@@ -69,7 +69,7 @@ pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativePairNearby<'loca
 
 /// The user compared the code of a `pairingRequest` and accepted or rejected it.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeConfirmPairing<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeConfirmPairing<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,
@@ -84,7 +84,7 @@ pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeConfirmPairing<'
 
 /// Unpairs `peer` on both ends.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeForget<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeForget<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,

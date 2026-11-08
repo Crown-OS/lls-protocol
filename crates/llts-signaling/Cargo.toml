@@ -1,6 +1,6 @@
 [package]
 name = "llts-signaling"
-description = "Sans-IO signalling for CrownConnect: control messages, mesh state and private discovery"
+description = "Sans-IO signalling for CrownLink: control messages, mesh state and private discovery"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

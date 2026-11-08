@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// One capability a device can share with a peer, matching the `crownconnect` IPC `Feature`.
+/// One capability a device can share with a peer, matching the `crownlink` IPC `Feature`.
 ///
 /// The discriminant is the bit a [`FeatureSet`] uses, so variants are only ever appended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

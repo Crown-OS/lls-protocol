@@ -1,4 +1,4 @@
-//! The sans-IO CrownConnect orchestrator shared by `crownconnect-linux` and `llts-android`.
+//! The sans-IO CrownLink orchestrator shared by `crownlink-linux` and `llts-android`.
 //!
 //! A [`Node`] owns everything above one llts [`Driver`](llts_transport::session::Driver): which
 //! devices are paired and whether to dial them, the pairing flows, the state every device

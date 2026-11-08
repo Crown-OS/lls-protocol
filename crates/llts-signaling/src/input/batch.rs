@@ -142,7 +142,7 @@ mod tests {
     }
 
     #[test]
-    fn the_wire_layout_matches_crownconnect_linux() -> Result<(), SignalingError> {
+    fn the_wire_layout_matches_crownlink_linux() -> Result<(), SignalingError> {
         let key = frame(&InputMessage {
             time_ms: 1000,
             event: InputEvent::Key {

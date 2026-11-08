@@ -1,6 +1,6 @@
 [package]
 name = "llts-android"
-description = "CrownConnect for Android: the llts node, driver and hardware media pipelines behind a JNI handle"
+description = "CrownLink for Android: the llts node, driver and hardware media pipelines behind a JNI handle"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

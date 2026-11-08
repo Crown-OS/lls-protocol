@@ -1,4 +1,4 @@
-//! CrownConnect for Android.
+//! CrownLink for Android.
 //!
 //! Kotlin owns the platform: permissions, BLE scanning and advertising, NSD, MediaProjection and
 //! the views. This owns the protocol: one runtime thread drives the llts [`Driver`] and the

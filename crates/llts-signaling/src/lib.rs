@@ -1,4 +1,4 @@
-//! Sans-IO signalling shared by `crownconnect-linux` and `llts-android`.
+//! Sans-IO signalling shared by `crownlink-linux` and `llts-android`.
 //!
 //! Media transport lives in the other `llts-*` crates. This crate owns what travels around it:
 //! the postcard control messages carried on the reliable channel, the versioned state each device

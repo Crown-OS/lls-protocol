@@ -37,7 +37,7 @@ use crate::{NodeError, Now, sync as documents};
 /// [`QrOffer`]: llts_transport::pairing::QrOffer
 const MAX_LOCAL_ADDRESSES: usize = 4;
 
-/// One device's view of its CrownConnect mesh; see the [crate documentation](crate).
+/// One device's view of its CrownLink mesh; see the [crate documentation](crate).
 #[derive(Debug)]
 pub struct Node {
     identity: DeviceIdentity,

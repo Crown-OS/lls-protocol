@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::state::{Topic, TopicPayload};
 
-/// Where a call stands, matching the `crownconnect` IPC `CallStatus`.
+/// Where a call stands, matching the `crownlink` IPC `CallStatus`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CallStatus {
     Ringing,
@@ -12,7 +12,7 @@ pub enum CallStatus {
     Ended,
 }
 
-/// One call on a device's phone line, matching the `crownconnect` IPC `CallInfo`.
+/// One call on a device's phone line, matching the `crownlink` IPC `CallInfo`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CallInfo<'a> {
     pub call_id: &'a str,

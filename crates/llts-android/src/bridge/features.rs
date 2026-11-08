@@ -11,7 +11,7 @@ use crate::util::device_hex::parse_device_hex;
 
 /// Allows or forbids `feature` (a `Feature` variant name) with `peer`.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeSetFeature<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeSetFeature<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,
@@ -32,7 +32,7 @@ pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeSetFeature<'loca
 
 /// Starts a media feature with `peer` from its JSON request, e.g. `{"Camera":{…}}`.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeStartFeature<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeStartFeature<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,
@@ -47,7 +47,7 @@ pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeStartFeature<'lo
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeStopFeature<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeStopFeature<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,
@@ -64,7 +64,7 @@ pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeStopFeature<'loc
 /// Sends `peer` a command to carry out, e.g. `{"Media":"Pause"}`, in the shape `remoteCommand`
 /// events carry.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeSendCommand<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeSendCommand<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,

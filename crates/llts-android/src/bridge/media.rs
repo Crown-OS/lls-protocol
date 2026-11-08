@@ -15,7 +15,7 @@ use crate::util::device_hex::parse_device_hex;
 /// `mediaStart` event with the `Encoder` role announced. Kotlin hands it to MediaProjection's
 /// virtual display or the camera; frames never leave the GPU until the encoder has them.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeCreateEncoderSurface<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeCreateEncoderSurface<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,
@@ -40,7 +40,7 @@ pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeCreateEncoderSur
 /// Renders the decoder of video stream `index` from `peer` into `surface`, typically a
 /// `SurfaceView`'s.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeAttachDecoderSurface<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeAttachDecoderSurface<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,
@@ -63,7 +63,7 @@ pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeAttachDecoderSur
 
 /// Stops the pipeline of video stream `index` with `peer`, as when its view goes away.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeDetachSurface<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeDetachSurface<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,
@@ -80,7 +80,7 @@ pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeDetachSurface<'l
 /// Sends one moment of input to `peer` on the session's input stream, for when this device
 /// drives the peer's screen: `{"timeMs": …, "events": [...]}`, the shape `input` events have.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeSendInput<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeSendInput<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,

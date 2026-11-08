@@ -11,7 +11,7 @@ use crate::state_json::encode_document;
 /// `remoteState` events carry; it is checked and converted to postcard here, on the caller's
 /// thread.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativePublishStateJson<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativePublishStateJson<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,

@@ -24,7 +24,7 @@ pub enum MediaRole {
     Decoder,
 }
 
-/// Where one feature of one device stands, matching the `crownconnect` IPC `FeatureState`.
+/// Where one feature of one device stands, matching the `crownlink` IPC `FeatureState`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FeatureState {
     Disabled,

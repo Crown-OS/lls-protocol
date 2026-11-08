@@ -11,7 +11,7 @@ use crate::command::{
 /// A beacon Kotlin's BLE scanner or NSD browser saw appear (`seen`) or disappear, with the
 /// `"host:port"` addresses it can be dialled at as a JSON array (empty for BLE).
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativePresence<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativePresence<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,
@@ -33,7 +33,7 @@ pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativePresence<'local>
 /// This device's IP addresses changed; `addresses_json` is a JSON array of them, without
 /// link-local ones, which a peer could not use without a scope.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeNetworkChanged<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeNetworkChanged<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,
@@ -47,7 +47,7 @@ pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeNetworkChanged<'
 
 /// The beacons to advertise now, each behind a one-byte length; `null` when there are none.
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_com_crownos_connect_llts_Llts_nativeAdvertisements<'local>(
+pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeAdvertisements<'local>(
     mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,

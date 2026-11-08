@@ -120,7 +120,7 @@ pub(crate) struct Sim {
     holding: Option<MessageType>,
     held: Vec<(usize, Wire)>,
     /// Every linked beacon a node advertises is seen at once at the other nodes' addresses, as
-    /// `crownconnect-linux` does for peers configured by address.
+    /// `crownlink-linux` does for peers configured by address.
     pub(crate) static_peers: bool,
     pub(crate) config: NodeConfig,
 }

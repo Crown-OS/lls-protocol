@@ -1,6 +1,6 @@
 [package]
 name = "llts-node"
-description = "Sans-IO CrownConnect orchestrator: paired peers, pairing, autoconnect, state sync and feature negotiation"
+description = "Sans-IO CrownLink orchestrator: paired peers, pairing, autoconnect, state sync and feature negotiation"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
