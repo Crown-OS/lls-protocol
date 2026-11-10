@@ -1,5 +1,6 @@
 //! Two nodes on real llts drivers over localhost, joined only by `bridge`: a QR pairing, state
-//! sync and a camera stream negotiated end to end through encrypted sessions.
+//! sync, a camera stream negotiated end to end through encrypted sessions, and application
+//! messages on their own lanes.
 
 #![allow(
     clippy::unwrap_used,
@@ -18,7 +19,8 @@ use llts_node::{
 };
 use llts_signaling::device::{DeviceClass, Feature};
 use llts_signaling::message::{
-    AudioCodec, CameraLens, Capabilities, CodecList, StartCamera, VideoCodec, VideoLimits,
+    AudioCodec, BlobAck, BlobId, CameraLens, Capabilities, CodecList, Message, RequestDone,
+    RequestId, StartCamera, VideoCodec, VideoLimits,
 };
 use llts_signaling::state::Battery;
 use llts_transport::pairing::{MemoryTrustStore, TrustStore};
@@ -220,6 +222,38 @@ fn two_nodes_pair_sync_and_stream_through_real_drivers() {
             started(laptop, MediaRole::Decoder) && started(phone, MediaRole::Encoder)
         }),
         "the camera stream was never negotiated"
+    );
+
+    let lanes = [
+        BlobAck {
+            blob: BlobId(1),
+            received: 4_096,
+        }
+        .encode(Vec::new())
+        .unwrap(),
+        RequestDone {
+            request: RequestId(2),
+            reference: None,
+        }
+        .encode(Vec::new())
+        .unwrap(),
+    ];
+    for message in &lanes {
+        laptop
+            .node
+            .send_application(now(laptop.origin), phone_id, message)
+            .unwrap();
+        laptop.drain();
+    }
+    assert!(
+        run_until(&mut laptop, &mut phone, |_, phone| {
+            lanes.iter().all(|sent| {
+                phone.events.iter().any(|event| {
+                    matches!(event, AppEvent::Application { peer, message } if *peer == laptop_id && message == sent)
+                })
+            })
+        }),
+        "application messages never crossed the Blob and Bulk lanes"
     );
     assert!(laptop.failures.is_empty(), "{:?}", laptop.failures);
     assert!(phone.failures.is_empty(), "{:?}", phone.failures);

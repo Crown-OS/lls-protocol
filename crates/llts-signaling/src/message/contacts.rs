@@ -44,7 +44,6 @@ pub struct Contact<'a> {
 
 impl Contact<'_> {
     fn validate(&self) -> Result<(), SignalingError> {
-        bounds::text("contact key", self.contact_key, MAX_CURSOR_BYTES)?;
         bounds::count("contact phones", self.phones.len(), MAX_CONTACT_FIELDS)?;
         bounds::count("contact emails", self.emails.len(), MAX_CONTACT_FIELDS)?;
         bounds::optional_text("contact photo key", self.photo_key, MAX_CURSOR_BYTES)

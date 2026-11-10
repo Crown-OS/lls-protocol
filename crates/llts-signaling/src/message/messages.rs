@@ -37,10 +37,7 @@ pub struct Conversation<'a> {
 impl Conversation<'_> {
     fn validate(&self) -> Result<(), SignalingError> {
         bounds::count("participants", self.participants.len(), MAX_PARTICIPANTS)?;
-        bounds::text("snippet", self.snippet, MAX_SNIPPET_BYTES)?;
-        self.participants.iter().try_for_each(|participant| {
-            bounds::optional_text("contact key", participant.contact_key, MAX_CURSOR_BYTES)
-        })
+        bounds::text("snippet", self.snippet, MAX_SNIPPET_BYTES)
     }
 }
 

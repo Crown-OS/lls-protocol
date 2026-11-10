@@ -68,6 +68,13 @@ pub(crate) enum BridgeError {
         source: SignalingError,
     },
 
+    #[error("a {len}-byte {kind} exceeds the {limit}-byte message limit")]
+    SignalTooLarge {
+        kind: &'static str,
+        len: usize,
+        limit: usize,
+    },
+
     #[error("a peer's application message could not be read")]
     Signal(#[source] SignalingError),
 }
@@ -90,6 +97,7 @@ impl BridgeError {
                 | Self::State(_)
                 | Self::MalformedSignal { .. }
                 | Self::InvalidSignal { .. }
+                | Self::SignalTooLarge { .. }
         )
     }
 }

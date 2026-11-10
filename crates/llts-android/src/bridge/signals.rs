@@ -11,8 +11,9 @@ use crate::util::device_hex::parse_device_hex;
 /// `"ListConversationsV1"`) with the body `bodyJson`, in the shape `signal` events carry.
 ///
 /// Returns `true` once the message is queued. `false` is reserved for a full queue, after which
-/// the caller waits for `writable`. A malformed body throws `IllegalArgumentException`; a peer
-/// that is gone or does not share the message's feature throws `IllegalStateException`.
+/// the caller waits for `writable`. A malformed body, or one too large for a single message,
+/// throws `IllegalArgumentException`; a peer that is gone or does not share the message's feature
+/// throws `IllegalStateException`.
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_com_crownos_link_llts_Llts_nativeSendSignal<'local>(
     mut env: EnvUnowned<'local>,

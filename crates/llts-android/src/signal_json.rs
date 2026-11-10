@@ -7,6 +7,7 @@
 //! Errors name the kind and where the JSON broke, never a value from it, because bodies carry
 //! messages, contacts and passwords.
 
+use llts_core::channel::MAX_MESSAGE_LEN;
 use llts_signaling::SignalingError;
 use llts_signaling::device::DeviceId;
 use llts_signaling::message::{
@@ -196,7 +197,15 @@ fn encode_body<'v, M: Message<'v> + Validate>(
     message
         .validate()
         .map_err(|source| BridgeError::InvalidSignal { kind: name, source })?;
-    Ok(message.encode(Vec::new())?)
+    let envelope = message.encode(Vec::new())?;
+    if envelope.len() > MAX_MESSAGE_LEN {
+        return Err(BridgeError::SignalTooLarge {
+            kind: name,
+            len: envelope.len(),
+            limit: MAX_MESSAGE_LEN,
+        });
+    }
+    Ok(envelope)
 }
 
 /// Keeps where the JSON broke and drops serde's message, which can quote the offending value.
@@ -509,5 +518,26 @@ mod tests {
             encode_signal("Explode", "{}"),
             Err(BridgeError::UnknownName { .. })
         ));
+    }
+
+    #[test]
+    fn a_page_too_large_for_one_message_is_the_callers_to_halve() {
+        let snippet = "s".repeat(500);
+        let conversation = format!(
+            r#"{{"thread_id":1,"participants":[],"participant_count":0,"snippet":"{snippet}","last_unix_ms":0,"unread":0,"has_attachments":false}}"#
+        );
+        let page = format!(
+            r#"{{"request":1,"items":[{}],"next":null}}"#,
+            vec![conversation.as_str(); 200].join(",")
+        );
+        let refusal = encode_signal("ConversationPageV1", &page);
+        assert!(matches!(
+            refusal,
+            Err(BridgeError::SignalTooLarge {
+                kind: "ConversationPageV1",
+                ..
+            })
+        ));
+        assert!(refusal.is_err_and(|error| error.is_caller_mistake()));
     }
 }

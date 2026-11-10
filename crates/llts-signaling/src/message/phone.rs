@@ -37,9 +37,8 @@ pub struct CallLogEntry<'a> {
 }
 
 impl CallLogEntry<'_> {
-    fn validate(&self) -> Result<(), SignalingError> {
-        bounds::text("call log entry id", self.entry_id, MAX_CURSOR_BYTES)?;
-        bounds::optional_text("contact key", self.contact_key, MAX_CURSOR_BYTES)
+    const fn validate(&self) -> Result<(), SignalingError> {
+        bounds::text("call log entry id", self.entry_id, MAX_CURSOR_BYTES)
     }
 }
 

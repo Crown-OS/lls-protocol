@@ -44,7 +44,8 @@ pub(crate) fn parse_beacon(bytes: &[u8]) -> Result<Beacon, BridgeError> {
 #[cfg(test)]
 mod tests {
     use llts_signaling::message::{
-        CameraLens, Direction, Edge, Media, StartCamera, StartMirror, StartMonitor,
+        CameraLens, Direction, Edge, Media, StartAudio, StartCamera, StartCast, StartMirror,
+        StartMonitor,
     };
 
     use super::*;
@@ -85,6 +86,22 @@ mod tests {
             Ok(FeatureRequest::Monitor(StartMonitor {
                 placement: Edge::Right,
                 ..
+            }))
+        ));
+        let cast = parse_feature_request(
+            r#"{"Cast":{"direction":"FromPeer","limits":{"max_width":1920,"max_height":1080,"max_fps":60}}}"#,
+        );
+        assert!(matches!(
+            cast,
+            Ok(FeatureRequest::Cast(StartCast {
+                direction: Direction::FromPeer,
+                ..
+            }))
+        ));
+        assert!(matches!(
+            parse_feature_request(r#"{"Audio":{"direction":"ToPeer"}}"#),
+            Ok(FeatureRequest::Audio(StartAudio {
+                direction: Direction::ToPeer
             }))
         ));
         assert!(parse_feature_request(r#"{"Mirror":{}}"#).is_err());
