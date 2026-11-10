@@ -1138,33 +1138,32 @@ fn messages_the_node_handles_itself_are_not_application_messages() {
 }
 
 #[test]
-fn an_application_message_on_the_wrong_lane_is_dropped() {
+fn an_application_message_off_its_lane_or_under_an_unshared_feature_is_dropped() {
     let mut sim = paired();
-    share(&mut sim, Feature::Links);
     let laptop = sim.id(LAPTOP);
     let uri = OpenUri {
         uri: "https://crownos.org",
     }
     .encode(Vec::new())
     .unwrap();
-    sim.input(
-        PHONE,
-        NodeInput::Link(llts_node::LinkEvent::Message {
-            peer: laptop,
-            stream: Lane::Bulk.stream(),
-            bytes: &uri,
-        }),
-    );
+    let deliver = |sim: &mut Sim, lane: Lane| {
+        sim.input(
+            PHONE,
+            NodeInput::Link(llts_node::LinkEvent::Message {
+                peer: laptop,
+                stream: lane.stream(),
+                bytes: &uri,
+            }),
+        );
+    };
+    deliver(&mut sim, Lane::Control);
     assert!(application(&sim, PHONE).is_empty());
-    sim.input(
-        PHONE,
-        NodeInput::Link(llts_node::LinkEvent::Message {
-            peer: laptop,
-            stream: Lane::Control.stream(),
-            bytes: &uri,
-        }),
-    );
-    assert_eq!(application(&sim, PHONE), [uri]);
+
+    share(&mut sim, Feature::Links);
+    deliver(&mut sim, Lane::Bulk);
+    assert!(application(&sim, PHONE).is_empty());
+    deliver(&mut sim, Lane::Control);
+    assert_eq!(application(&sim, PHONE), core::slice::from_ref(&uri));
 }
 
 #[test]

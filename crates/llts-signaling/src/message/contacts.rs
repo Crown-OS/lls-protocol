@@ -75,7 +75,7 @@ pub struct ContactPage<'a> {
 
 impl Validate for ContactPage<'_> {
     fn validate(&self) -> Result<(), SignalingError> {
-        bounds::optional_text("page cursor", self.next, MAX_CURSOR_BYTES)?;
+        bounds::page(self.items.len(), self.next)?;
         self.items.iter().try_for_each(Contact::validate)
     }
 }

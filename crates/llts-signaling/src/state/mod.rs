@@ -25,6 +25,7 @@ pub use payload::{
     LiveActivities, LiveActivity, LiveProgress, MAX_HEADSETS, MAX_INLINE_CLIPBOARD_BYTES,
     MAX_LIVE_ACTIONS, MAX_LIVE_ACTIVITIES, MAX_LIVE_DOCUMENT_BYTES, MAX_LIVE_FIELD_BYTES,
     MediaSession, Notification, NotificationAction, Notifications, TopicPayload, Volume,
+    validate_payload,
 };
 pub use publisher::{Published, StatePublisher};
 pub use topic::{Topic, TopicSet};

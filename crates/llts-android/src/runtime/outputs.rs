@@ -1,13 +1,16 @@
 use llts_core::session::Event;
 use llts_node::bridge::execute;
 use llts_node::{
-    AppEvent, LinkEvent, MediaRequest, NodeInput, NodeOutput, PersistRequest, RemoteCommand,
+    AppCommand, AppEvent, FeatureFailure, LinkEvent, MediaRequest, NodeInput, NodeOutput,
+    PersistRequest, RemoteCommand,
 };
+use llts_signaling::device::{DeviceId, Feature};
 use llts_transport::security::StaticKey;
 
 use super::event_loop::EventLoop;
 use crate::error::BridgeError;
 use crate::event_json;
+use crate::media;
 
 impl EventLoop {
     /// Carries out everything the node asked for, including what that in turn makes it ask.
@@ -56,6 +59,12 @@ impl EventLoop {
     }
 
     fn start_or_stop_media(&mut self, request: &MediaRequest) {
+        if let MediaRequest::Start { peer, request, .. } = *request
+            && !media::implements(request.feature())
+        {
+            self.refuse_unimplemented(peer, request.feature());
+            return;
+        }
         let outcome = match *request {
             MediaRequest::Start {
                 peer,
@@ -73,6 +82,19 @@ impl EventLoop {
             self.report(&error);
         }
         self.emit(event_json::media_request(request));
+    }
+
+    /// Stops a feature this build has no pipeline for, which a peer started regardless, and
+    /// tells Kotlin it is unavailable instead of asking it for media it cannot make.
+    fn refuse_unimplemented(&mut self, peer: DeviceId, feature: Feature) {
+        let stop = AppCommand::StopFeature { peer, feature };
+        self.node.handle(self.clock.now(), NodeInput::App(stop));
+        let failed = AppEvent::FeatureFailed {
+            peer,
+            feature,
+            reason: FeatureFailure::Unavailable,
+        };
+        self.emit(event_json::app_event(&failed, &self.node));
     }
 
     fn persist(&mut self, request: PersistRequest) -> Result<(), BridgeError> {

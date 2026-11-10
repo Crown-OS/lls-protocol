@@ -92,7 +92,7 @@ pub struct CallLogPage<'a> {
 
 impl Validate for CallLogPage<'_> {
     fn validate(&self) -> Result<(), SignalingError> {
-        bounds::optional_text("page cursor", self.next, MAX_CURSOR_BYTES)?;
+        bounds::page(self.items.len(), self.next)?;
         self.items.iter().try_for_each(CallLogEntry::validate)
     }
 }
@@ -122,7 +122,7 @@ pub struct VoicemailPage<'a> {
 
 impl Validate for VoicemailPage<'_> {
     fn validate(&self) -> Result<(), SignalingError> {
-        bounds::optional_text("page cursor", self.next, MAX_CURSOR_BYTES)?;
+        bounds::page(self.items.len(), self.next)?;
         self.items.iter().try_for_each(Voicemail::validate)
     }
 }

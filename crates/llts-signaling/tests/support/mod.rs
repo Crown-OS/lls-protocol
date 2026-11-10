@@ -27,6 +27,20 @@ const NEXT_PAGE: PageRequest<'static> = PageRequest {
     limit: 200,
 };
 
+pub(crate) const fn call_log_entry() -> CallLogEntry<'static> {
+    CallLogEntry {
+        entry_id: "441",
+        number: "+1 555 0100",
+        name: Some("Ada"),
+        contact_key: None,
+        kind: CallKind::MISSED,
+        start_unix_ms: 1_700_000_000_000,
+        duration_s: 0,
+        is_new: true,
+        sim_slot: Some(0),
+    }
+}
+
 pub(crate) fn message_item() -> MessageItem<'static> {
     MessageItem {
         thread_id: 7,
@@ -184,17 +198,7 @@ pub(crate) fn application_messages() -> Vec<Signal<'static>> {
         }),
         Signal::CallLogPageV1(CallLogPage {
             request: RequestId(6),
-            items: vec![CallLogEntry {
-                entry_id: "441",
-                number: "+1 555 0100",
-                name: Some("Ada"),
-                contact_key: None,
-                kind: CallKind::MISSED,
-                start_unix_ms: 1_700_000_000_000,
-                duration_s: 0,
-                is_new: true,
-                sim_slot: Some(0),
-            }],
+            items: vec![call_log_entry()],
             next: Some("1700000000000:441"),
         }),
         Signal::ListVoicemailV1(ListVoicemail {

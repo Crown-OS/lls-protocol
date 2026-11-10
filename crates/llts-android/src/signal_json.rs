@@ -521,6 +521,27 @@ mod tests {
     }
 
     #[test]
+    fn a_peer_body_breaking_its_caps_never_reaches_kotlin() {
+        let script = OpenUri {
+            uri: "javascript:alert(1)",
+        }
+        .encode(Vec::new());
+        let long_ssid = "s".repeat(33);
+        let request = WifiRequest {
+            request: RequestId(1),
+            ssid: &long_ssid,
+        }
+        .encode(Vec::new());
+        for message in [script, request] {
+            let refused = message.map(|message| inbound(&PEER, &message));
+            assert!(
+                matches!(refused, Ok(Err(BridgeError::InvalidSignal { .. }))),
+                "{refused:?}"
+            );
+        }
+    }
+
+    #[test]
     fn a_page_too_large_for_one_message_is_the_callers_to_halve() {
         let snippet = "s".repeat(500);
         let conversation = format!(

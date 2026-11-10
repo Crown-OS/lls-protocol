@@ -43,18 +43,12 @@ impl MediaPipelines {
     pub(crate) const fn start(
         &mut self,
         _peer: DeviceId,
-        request: FeatureRequest,
+        _request: FeatureRequest,
         _role: MediaRole,
         _stream: StreamRef,
         _params: StreamParams,
     ) -> Result<(), MediaError> {
-        match request {
-            FeatureRequest::Cast(_) | FeatureRequest::Audio(_) => Err(MediaError::Unsupported),
-            FeatureRequest::Mirror(_)
-            | FeatureRequest::Camera(_)
-            | FeatureRequest::Mic
-            | FeatureRequest::Monitor(_) => Ok(()),
-        }
+        Ok(())
     }
 
     #[expect(

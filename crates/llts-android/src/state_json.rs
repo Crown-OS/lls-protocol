@@ -6,8 +6,8 @@
 use llts_signaling::state::{
     AudioRoutes, Battery, CallState, Clipboard, ClipboardContent, DeviceInfo, Focus, Hotspot,
     HybridTimestamp, LiveActivities, MediaSession, Notifications, Topic, TopicPayload, Volume,
+    validate_payload,
 };
-use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::error::BridgeError;
@@ -30,7 +30,8 @@ pub(crate) struct LocalDocument {
     pub(crate) stamp: Stamp,
 }
 
-/// Postcard for `topic` from its JSON form. A clipboard is always a local copy and is stamped
+/// Postcard for `topic` from its JSON form, refused here when it breaks a cap of its topic so
+/// the caller hears of it rather than the runtime thread. A clipboard is always a local copy and is stamped
 /// fresh. A focus is stamped fresh when it leaves out its `stamp`; one that carries a stamp is
 /// a peer's mode this device adopted, which keeps the peer's stamp so the two do not ping-pong.
 pub(crate) fn encode_document(topic: Topic, json: &str) -> Result<LocalDocument, BridgeError> {
@@ -56,18 +57,10 @@ pub(crate) fn encode_document(topic: Topic, json: &str) -> Result<LocalDocument,
         Topic::Volume => encode::<Volume>(&value),
         Topic::Hotspot => encode::<Hotspot<'_>>(&value),
         Topic::Focus => encode::<Focus<'_>>(&value),
-        Topic::LiveActivities => {
-            let activities =
-                LiveActivities::deserialize(&value).map_err(BridgeError::json(WHAT))?;
-            activities.validate()?;
-            Ok(postcard::to_allocvec(&activities)?)
-        }
-        Topic::AudioRoutes => {
-            let routes = AudioRoutes::deserialize(&value).map_err(BridgeError::json(WHAT))?;
-            routes.validate()?;
-            Ok(postcard::to_allocvec(&routes)?)
-        }
+        Topic::LiveActivities => encode::<LiveActivities<'_>>(&value),
+        Topic::AudioRoutes => encode::<AudioRoutes<'_>>(&value),
     }?;
+    validate_payload(topic, &payload)?;
     Ok(LocalDocument { payload, stamp })
 }
 
@@ -143,6 +136,9 @@ pub(crate) fn restamp(
 
 #[cfg(test)]
 mod tests {
+    use llts_signaling::SignalingError;
+    use llts_signaling::state::{MAX_LIVE_ACTIVITIES, MAX_LIVE_FIELD_BYTES};
+
     use super::*;
 
     fn round_trip(topic: Topic, json: &str) -> Option<Value> {
@@ -277,5 +273,27 @@ mod tests {
                 .join(",")
         );
         assert!(encode_document(Topic::AudioRoutes, &crowded).is_err());
+    }
+
+    #[test]
+    fn a_live_activities_document_over_its_byte_cap_is_the_callers_mistake() {
+        let field = "f".repeat(MAX_LIVE_FIELD_BYTES);
+        let action = format!(r#"{{"id":"{field}","label":"{field}","accepts_text":false}}"#);
+        let activity = format!(
+            r#"{{"id":"{field}","package":"{field}","app":"{field}","title":"{field}","text":"{field}","short_text":"{field}","category":"{field}","progress":null,"chronometer":null,"promoted":false,"color_argb":null,"actions":[{action},{action},{action}]}}"#
+        );
+        let document = |count: usize| {
+            format!(
+                r#"{{"activities":[{}]}}"#,
+                vec![activity.as_str(); count].join(",")
+            )
+        };
+        assert!(encode_document(Topic::LiveActivities, &document(1)).is_ok());
+        let refusal = encode_document(Topic::LiveActivities, &document(MAX_LIVE_ACTIVITIES));
+        assert!(matches!(
+            refusal,
+            Err(BridgeError::State(SignalingError::DocumentTooLarge { .. }))
+        ));
+        assert!(refusal.is_err_and(|error| error.is_caller_mistake()));
     }
 }

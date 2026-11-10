@@ -47,7 +47,8 @@ impl StatePublisher {
     ///
     /// # Errors
     ///
-    /// Returns [`SignalingError::Encode`] if the value cannot be encoded.
+    /// Returns [`SignalingError::Encode`] if the value cannot be encoded, and the cap it breaks
+    /// for a document over its topic's limits, so a peer is never sent one it would refuse.
     pub fn publish<'a, P: TopicPayload<'a>>(
         &mut self,
         value: &P,
@@ -55,6 +56,10 @@ impl StatePublisher {
         self.scratch.clear();
         let encoded = postcard::to_extend(value, mem::take(&mut self.scratch))
             .map_err(SignalingError::Encode)?;
+        if let Err(error) = validate_payload(P::TOPIC, &encoded) {
+            self.scratch = encoded;
+            return Err(error);
+        }
 
         let slot = self.documents.slot(P::TOPIC);
         if slot

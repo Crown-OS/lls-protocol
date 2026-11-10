@@ -51,7 +51,12 @@ pub(crate) fn decode_payload<'a, P: TopicPayload<'a>>(
 
 /// Checks that `bytes` decode as the document `topic` carries, and keep to its caps, for
 /// payloads encoded elsewhere.
-pub(crate) fn validate_payload(topic: Topic, bytes: &[u8]) -> Result<(), SignalingError> {
+///
+/// # Errors
+///
+/// Returns [`SignalingError::MalformedPayload`] for bytes that are not such a document, and the
+/// cap a document breaks otherwise.
+pub fn validate_payload(topic: Topic, bytes: &[u8]) -> Result<(), SignalingError> {
     match topic {
         Topic::DeviceInfo => decode_payload::<DeviceInfo<'_>>(bytes).map(drop),
         Topic::Battery => decode_payload::<Battery>(bytes).map(drop),

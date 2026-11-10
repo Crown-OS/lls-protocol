@@ -389,6 +389,13 @@ fn live_activities_breaking_a_cap_are_refused_at_publication() {
             .publish_encoded(Topic::AudioRoutes, &bytes)
             .is_err()
     );
+
+    assert!(matches!(
+        publisher.publish(&crowded),
+        Err(SignalingError::TooManyEntries { .. })
+    ));
+    assert!(publisher.publish(&routes).is_err());
+    assert!(publisher.topics().is_empty());
 }
 
 #[test]

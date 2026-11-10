@@ -174,7 +174,7 @@ pub struct ConversationPage<'a> {
 
 impl Validate for ConversationPage<'_> {
     fn validate(&self) -> Result<(), SignalingError> {
-        bounds::optional_text("page cursor", self.next, MAX_CURSOR_BYTES)?;
+        bounds::page(self.items.len(), self.next)?;
         self.items.iter().try_for_each(Conversation::validate)
     }
 }
@@ -206,7 +206,7 @@ pub struct MessagePage<'a> {
 
 impl Validate for MessagePage<'_> {
     fn validate(&self) -> Result<(), SignalingError> {
-        bounds::optional_text("page cursor", self.next, MAX_CURSOR_BYTES)?;
+        bounds::page(self.items.len(), self.next)?;
         self.items.iter().try_for_each(MessageItem::validate)
     }
 }

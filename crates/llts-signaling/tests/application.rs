@@ -11,13 +11,14 @@ mod support;
 use llts_signaling::SignalingError;
 use llts_signaling::device::{Feature, FeatureSet};
 use llts_signaling::message::{
-    AppRoute, BlobId, BlobPurpose, BlobStart, CallKind, CaptureKind, DragEnter, DragId, DragItem,
-    DragItemKind, Edge, EdgePosition, FfspTransferId, FilePush, Gate, Lane, ListContacts, Location,
-    Message, MessageType, MuxClass, OpenUri, PageRequest, RequestError, RequestFailed, RequestId,
-    SendMessage, Signal, StreamRef, TakeHeadset, Validate, WifiCredentials, WifiSecurity, limits,
+    AppRoute, BlobId, BlobPurpose, BlobStart, CallKind, CallLogPage, CaptureKind, DragEnter,
+    DragId, DragItem, DragItemKind, Edge, EdgePosition, FfspTransferId, FilePush, Gate, Lane,
+    ListContacts, Location, Message, MessageType, MuxClass, OpenUri, PageRequest, RequestError,
+    RequestFailed, RequestId, SendMessage, Signal, StreamRef, TakeHeadset, Validate,
+    WifiCredentials, WifiSecurity, limits,
 };
 use llts_signaling::state::Topic;
-use support::{REQUEST, application_messages, message_item};
+use support::{REQUEST, application_messages, call_log_entry, message_item};
 
 fn sample(kind: MessageType) -> Option<Signal<'static>> {
     application_messages()
@@ -425,6 +426,24 @@ fn bodies_breaking_their_caps_are_refused_without_quoting_them() {
         },
     };
     assert!(list.validate().is_err());
+
+    let overlong = CallLogPage {
+        request: REQUEST,
+        items: vec![call_log_entry(); usize::from(limits::MAX_PAGE_ITEMS) + 1],
+        next: None,
+    };
+    assert!(matches!(
+        overlong.validate(),
+        Err(SignalingError::TooManyEntries {
+            field: "page items",
+            ..
+        })
+    ));
+    let full = CallLogPage {
+        items: vec![call_log_entry(); usize::from(limits::MAX_PAGE_ITEMS)],
+        ..overlong
+    };
+    assert_eq!(full.validate(), Ok(()));
 
     let mut item = message_item();
     item.text = Some(&long_text);

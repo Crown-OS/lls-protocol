@@ -1,4 +1,5 @@
 use crate::SignalingError;
+use crate::message::limits::{MAX_CURSOR_BYTES, MAX_PAGE_ITEMS};
 
 /// Refuses a string longer than `limit` bytes, naming the field but never its content.
 pub(crate) const fn text(
@@ -57,4 +58,10 @@ pub(crate) fn file_name(
     } else {
         Err(SignalingError::OutOfRange { field })
     }
+}
+
+/// Refuses a page longer than any request may ask for, or with an oversized cursor.
+pub(crate) fn page(items: usize, next: Option<&str>) -> Result<(), SignalingError> {
+    count("page items", items, usize::from(MAX_PAGE_ITEMS))?;
+    optional_text("page cursor", next, MAX_CURSOR_BYTES)
 }
