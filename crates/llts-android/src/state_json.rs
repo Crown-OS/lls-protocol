@@ -12,8 +12,6 @@ use serde_json::{Value, json};
 
 use crate::error::BridgeError;
 
-const WHAT: &str = "the state document";
-
 /// Where the stamp of a document ordered across devices comes from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Stamp {
@@ -35,7 +33,7 @@ pub(crate) struct LocalDocument {
 /// fresh. A focus is stamped fresh when it leaves out its `stamp`; one that carries a stamp is
 /// a peer's mode this device adopted, which keeps the peer's stamp so the two do not ping-pong.
 pub(crate) fn encode_document(topic: Topic, json: &str) -> Result<LocalDocument, BridgeError> {
-    let mut value: Value = serde_json::from_str(json).map_err(BridgeError::json(WHAT))?;
+    let mut value: Value = serde_json::from_str(json).map_err(malformed(topic))?;
     let stamp = match (topic, &mut value) {
         (Topic::Clipboard, Value::Object(fields)) => {
             fields.entry("stamp").or_insert_with(unstamped);
@@ -81,18 +79,28 @@ pub(crate) fn document_json(topic: Topic, payload: &[u8]) -> Result<Value, Bridg
     }
 }
 
+/// Keeps where the JSON broke and drops serde's message, which can quote the offending value:
+/// documents carry notification text, focus names and headset names.
+fn malformed(topic: Topic) -> impl Fn(serde_json::Error) -> BridgeError {
+    move |error| BridgeError::MalformedDocument {
+        topic,
+        line: error.line(),
+        column: error.column(),
+    }
+}
+
 fn unstamped() -> Value {
     json!({ "wall_ms": 0, "counter": 0 })
 }
 
 fn encode<'v, P: TopicPayload<'v>>(value: &'v Value) -> Result<Vec<u8>, BridgeError> {
-    let payload = P::deserialize(value).map_err(BridgeError::json(WHAT))?;
+    let payload = P::deserialize(value).map_err(malformed(P::TOPIC))?;
     Ok(postcard::to_allocvec(&payload)?)
 }
 
 fn to_json<'p, P: TopicPayload<'p>>(payload: &'p [u8]) -> Result<Value, BridgeError> {
     let document: P = postcard::from_bytes(payload)?;
-    serde_json::to_value(&document).map_err(BridgeError::json(WHAT))
+    serde_json::to_value(&document).map_err(malformed(P::TOPIC))
 }
 
 /// Inline clipboard bytes go out as a string, the same form they are accepted in, rather than
@@ -140,6 +148,7 @@ mod tests {
     use llts_signaling::state::{MAX_LIVE_ACTIVITIES, MAX_LIVE_FIELD_BYTES};
 
     use super::*;
+    use crate::error::describe;
 
     fn round_trip(topic: Topic, json: &str) -> Option<Value> {
         let document = encode_document(topic, json).ok()?;
@@ -273,6 +282,37 @@ mod tests {
                 .join(",")
         );
         assert!(encode_document(Topic::AudioRoutes, &crowded).is_err());
+    }
+
+    #[test]
+    fn malformed_documents_are_refused_without_quoting_their_content() {
+        let secret = "Dinner with Ada at 8";
+        for (topic, json) in [
+            (
+                Topic::LiveActivities,
+                format!(r#"{{"activities":[{{"id":7,"title":"{secret}"}}]}}"#),
+            ),
+            (
+                Topic::Focus,
+                format!(r#"{{"mode":"{secret}","until_unix_ms":null}}"#),
+            ),
+            (
+                Topic::AudioRoutes,
+                format!(r#"{{"headsets":[{{"address":"{secret}","name":1}}]}}"#),
+            ),
+            (Topic::Notifications, format!(r#"{{"active":"{secret}"}}"#)),
+            (Topic::Clipboard, format!(r#"{{"mime":"{secret}""#)),
+        ] {
+            let refusal = encode_document(topic, &json);
+            assert!(
+                matches!(refusal, Err(BridgeError::MalformedDocument { .. })),
+                "{topic:?}"
+            );
+            if let Err(error) = refusal {
+                assert!(error.is_caller_mistake());
+                assert!(!describe(&error).contains(secret), "{topic:?}");
+            }
+        }
     }
 
     #[test]

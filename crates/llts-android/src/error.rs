@@ -1,6 +1,7 @@
 use llts_node::NodeError;
 use llts_signaling::SignalingError;
 use llts_signaling::discovery::DiscoveryError;
+use llts_signaling::state::Topic;
 use llts_transport::TransportError;
 
 use crate::media::MediaError;
@@ -77,6 +78,13 @@ pub(crate) enum BridgeError {
 
     #[error("a peer's application message could not be read")]
     Signal(#[source] SignalingError),
+
+    #[error("malformed {topic:?} document at {line}:{column}")]
+    MalformedDocument {
+        topic: Topic,
+        line: usize,
+        column: usize,
+    },
 }
 
 impl BridgeError {
@@ -98,6 +106,7 @@ impl BridgeError {
                 | Self::MalformedSignal { .. }
                 | Self::InvalidSignal { .. }
                 | Self::SignalTooLarge { .. }
+                | Self::MalformedDocument { .. }
         )
     }
 }
