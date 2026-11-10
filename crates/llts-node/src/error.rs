@@ -33,4 +33,7 @@ pub enum NodeError {
 
     #[error("the operating system has no entropy to draw from")]
     Entropy(#[from] getrandom::Error),
+
+    #[error("message type {0:#06x} is not an application message")]
+    NotApplication(u16),
 }

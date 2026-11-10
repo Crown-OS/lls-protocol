@@ -1,4 +1,6 @@
 #[cfg(target_os = "android")]
+use llts_signaling::device::Feature;
+#[cfg(target_os = "android")]
 use llts_signaling::message::VideoCodec;
 
 #[derive(Debug, thiserror::Error)]
@@ -6,6 +8,10 @@ pub(crate) enum MediaError {
     #[cfg(not(target_os = "android"))]
     #[error("hardware media pipelines exist only on Android")]
     Unsupported,
+
+    #[cfg(target_os = "android")]
+    #[error("{0:?} has no media pipeline in this build")]
+    Unimplemented(Feature),
 
     #[cfg(target_os = "android")]
     #[error("no stream {index} is waiting for a {expected} surface")]

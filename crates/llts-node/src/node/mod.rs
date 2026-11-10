@@ -1,6 +1,7 @@
 //! The orchestrator itself, split by concern: links and autoconnect, pairing, discovery, state
 //! sync, features and commands each extend [`Node`] in their own file.
 
+mod application;
 mod commands;
 mod features;
 mod link;
@@ -196,6 +197,7 @@ impl Node {
             AppCommand::StartFeature { peer, request } => self.start_feature(peer, request),
             AppCommand::StopFeature { peer, feature } => self.stop_feature(peer, feature),
             AppCommand::Send { peer, command } => self.send_command(peer, command),
+            AppCommand::SendApplication { peer, message } => self.queue_application(peer, message),
         }
     }
 

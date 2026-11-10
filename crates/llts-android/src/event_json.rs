@@ -17,6 +17,7 @@ use serde_json::{Value, json};
 
 use crate::command::{FeatureRequestJson, PeerCommand};
 use crate::error::describe;
+use crate::signal_json::signal_event;
 use crate::state_json::document_json;
 use crate::util::device_hex::device_hex;
 
@@ -163,6 +164,8 @@ fn app_event_value(event: &AppEvent, node: &Node) -> Value {
             "peer": device_hex(peer),
             "command": PeerCommand::from(command),
         }),
+        AppEvent::Application { peer, message } => signal_event(peer, message)
+            .unwrap_or_else(|failure| json!({ "type": "error", "message": describe(&failure) })),
         AppEvent::Error(failure) => json!({ "type": "error", "message": describe(failure) }),
     }
 }

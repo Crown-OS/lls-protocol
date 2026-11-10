@@ -24,6 +24,11 @@ impl MediaKind {
     }
 }
 
+const VOICE_BITRATE: Bitrate = match Bitrate::from_kilobits_per_second(64) {
+    Some(bitrate) => bitrate,
+    None => Bitrate::LOW,
+};
+
 /// Everything a media stream needs to know before it sees a packet.
 #[derive(Debug, Clone, Copy)]
 pub struct MediaStreamConfig {
@@ -48,11 +53,17 @@ impl MediaStreamConfig {
 
     /// Opus at 10 ms frames with in-band FEC, the call and microphone configuration.
     pub const fn opus_voice(role: Role) -> Self {
+        Self::opus(role, FrameRate::OPUS_10_MS, VOICE_BITRATE)
+    }
+
+    /// Opus with in-band FEC at `frame` packets a second, reserving the `bitrate` its encoder
+    /// is fixed to.
+    pub const fn opus(role: Role, frame: FrameRate, bitrate: Bitrate) -> Self {
         Self {
             role,
-            frame_rate: FrameRate::OPUS_10_MS,
+            frame_rate: frame,
             repair: RepairMode::Off,
-            reserved_bitrate: Bitrate::from_kilobits_per_second(64),
+            reserved_bitrate: Some(bitrate),
         }
     }
 }

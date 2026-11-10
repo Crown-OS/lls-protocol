@@ -3,14 +3,14 @@
 use std::net::SocketAddr;
 
 use llts_signaling::device::{DeviceClass, DeviceId};
-use llts_signaling::message::{GoodbyeReason, Signal, StreamRef};
+use llts_signaling::message::{Envelope, GoodbyeReason, MessageType, Signal, StreamRef};
 
 use llts_transport::canonical_address;
 
 use crate::input::LinkEvent;
 use crate::output::{AppEvent, DriverCommand, NodeOutput};
 use crate::peer::{LinkState, Session};
-use crate::util::stream::{CONTROL, STATE};
+use crate::util::stream::{BLOB, BULK, CONTROL, STATE};
 use crate::{FfspLinkExport, LinkSecret, Node, NodeError};
 
 impl Node {
@@ -75,10 +75,9 @@ impl Node {
         if just_paired {
             self.export_link(peer);
         }
-        self.command(DriverCommand::OpenReliable {
-            peer,
-            stream: STATE,
-        });
+        for stream in [STATE, BULK, BLOB] {
+            self.command(DriverCommand::OpenReliable { peer, stream });
+        }
         let capabilities = self.capabilities_for(enabled);
         self.send(peer, CONTROL, &Signal::CapabilitiesV1(capabilities))?;
         self.emit(AppEvent::DeviceConnected {
@@ -118,6 +117,12 @@ impl Node {
             .is_none_or(|entry| entry.session.is_none())
         {
             return Ok(());
+        }
+        if let Some(route) = Envelope::parse(bytes)?
+            .message_type()
+            .and_then(MessageType::app_route)
+        {
+            return self.on_application(peer, stream, route, bytes);
         }
         let signal = Signal::decode(bytes)?;
         match signal {
@@ -159,7 +164,9 @@ impl Node {
             Signal::StartMirrorV1(_)
             | Signal::StartCameraV1(_)
             | Signal::StartMicV1(_)
-            | Signal::StartMonitorV1(_) => self.on_feature_request(peer, &signal),
+            | Signal::StartMonitorV1(_)
+            | Signal::StartCastV1(_)
+            | Signal::StartAudioV1(_) => self.on_feature_request(peer, &signal),
             signal => {
                 self.on_command(peer, &signal, stream);
                 Ok(())

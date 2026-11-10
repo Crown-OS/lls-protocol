@@ -22,6 +22,9 @@ impl EventLoop {
                     Ok(None) => {}
                     Err(error) => self.report(&error),
                 },
+                NodeOutput::App(AppEvent::Application { peer, message }) => {
+                    self.on_application(peer, &message);
+                }
                 NodeOutput::App(event) => {
                     self.emit(event_json::app_event(&event, &self.node));
                     if let AppEvent::RemoteCommand {

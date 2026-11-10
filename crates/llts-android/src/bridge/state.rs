@@ -9,7 +9,7 @@ use crate::state_json::encode_document;
 
 /// Publishes this device's document for `topic` (a `Topic` variant name) from the JSON shape
 /// `remoteState` events carry; it is checked and converted to postcard here, on the caller's
-/// thread.
+/// thread. A clipboard, and a focus without a `stamp`, are stamped on the node's clock.
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_com_crownos_link_llts_Llts_nativePublishStateJson<'local>(
     mut env: EnvUnowned<'local>,
@@ -20,7 +20,7 @@ pub extern "system" fn Java_com_crownos_link_llts_Llts_nativePublishStateJson<'l
 ) {
     run(&mut env, |env| {
         let topic = parse_topic(&topic.try_to_string(env)?)?;
-        let payload = encode_document(topic, &json.try_to_string(env)?)?;
-        instance(handle)?.send(Command::PublishState { topic, payload })
+        let document = encode_document(topic, &json.try_to_string(env)?)?;
+        instance(handle)?.send(Command::PublishState { topic, document })
     });
 }

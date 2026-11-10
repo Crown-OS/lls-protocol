@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::net::SocketAddr;
 
 use llts_core::session::Event;
@@ -9,13 +10,22 @@ use llts_transport::security::StaticKey;
 use super::event_loop::{EventLoop, Flow, INPUT_STREAM};
 use crate::command::{Command, NodeCommand};
 use crate::error::BridgeError;
-use crate::state_json::restamp_clipboard;
+use crate::state_json::{LocalDocument, Stamp, restamp};
 
 impl EventLoop {
     pub(super) fn execute(&mut self, command: Command) -> Flow {
         let outcome = match command {
             Command::Stop => return Flow::Stop,
-            Command::PublishState { topic, payload } => self.publish_state(topic, &payload),
+            Command::PublishState { topic, document } => self.publish_state(topic, &document),
+            Command::SendApplication {
+                peer,
+                message,
+                outcome,
+            } => {
+                let sent = self.node.send_application(self.clock.now(), peer, &message);
+                let _ = outcome.send(sent);
+                Ok(())
+            }
             Command::SendInput { peer, batch } => self.send_input(peer, &batch),
             Command::AttachSurface {
                 peer,
@@ -134,21 +144,19 @@ impl EventLoop {
         }
     }
 
-    fn publish_state(&mut self, topic: Topic, payload: &[u8]) -> Result<(), BridgeError> {
+    fn publish_state(&mut self, topic: Topic, document: &LocalDocument) -> Result<(), BridgeError> {
         let now = self.clock.now();
-        if topic == Topic::Clipboard {
-            let stamped = restamp_clipboard(payload, self.node.clipboard_stamp(now))?;
-            self.node.handle(
-                now,
-                NodeInput::LocalState {
-                    topic,
-                    payload: &stamped,
-                },
-            );
-        } else {
-            self.node
-                .handle(now, NodeInput::LocalState { topic, payload });
-        }
+        let payload = match document.stamp {
+            Stamp::AsWritten => Cow::Borrowed(document.payload.as_slice()),
+            Stamp::Fresh => Cow::Owned(restamp(topic, &document.payload, self.node.stamp(now))?),
+        };
+        self.node.handle(
+            now,
+            NodeInput::LocalState {
+                topic,
+                payload: &payload,
+            },
+        );
         Ok(())
     }
 

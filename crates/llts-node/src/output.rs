@@ -141,6 +141,12 @@ pub enum AppEvent {
         peer: DeviceId,
         command: RemoteCommand,
     },
+    /// An application message from `peer` that passed its lane and feature gate, as the
+    /// envelope arrived; the platform decodes it.
+    Application {
+        peer: DeviceId,
+        message: Vec<u8>,
+    },
     /// A command or input could not be carried out.
     Error(NodeError),
 }

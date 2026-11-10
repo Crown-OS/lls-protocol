@@ -7,9 +7,11 @@ use llts_signaling::SignalingError;
 use llts_signaling::device::DeviceId;
 use llts_signaling::message::Update;
 use llts_signaling::state::{
-    Applied, Battery, Clipboard, ClipboardContent, Hotspot, HybridTimestamp, Incarnation,
-    MAX_INLINE_CLIPBOARD_BYTES, MediaSession, Published, StateCache, StateOutbox, StatePublisher,
-    Topic, TopicSet, Version, Volume,
+    Applied, AudioRoutes, Battery, Chronometer, Clipboard, ClipboardContent, Focus, FocusMode,
+    Headset, Hotspot, HybridTimestamp, Incarnation, LiveActivities, LiveActivity, LiveProgress,
+    MAX_HEADSETS, MAX_INLINE_CLIPBOARD_BYTES, MAX_LIVE_ACTIVITIES, MAX_LIVE_FIELD_BYTES,
+    MediaSession, NotificationAction, Published, StateCache, StateOutbox, StatePublisher, Topic,
+    TopicSet, Version, Volume,
 };
 
 const OWNER: DeviceId = DeviceId([7; 32]);
@@ -283,4 +285,126 @@ fn an_encoded_payload_publishes_like_a_typed_one_and_garbage_is_refused() {
             ..
         })
     ));
+}
+
+fn timer<'a>(title: &'a str) -> LiveActivity<'a> {
+    LiveActivity {
+        id: "0|com.clock|7|null|10101",
+        package: "com.clock",
+        app: "Clock",
+        title,
+        text: "Pasta",
+        short_text: Some("4:59"),
+        category: Some("stopwatch"),
+        progress: Some(LiveProgress {
+            value: 1,
+            max: 300,
+            indeterminate: false,
+        }),
+        chronometer: Some(Chronometer {
+            base_unix_ms: 1_700_000_300_000,
+            counts_down: true,
+        }),
+        promoted: true,
+        color_argb: Some(0xFF20_8040),
+        actions: vec![NotificationAction {
+            id: "pause",
+            label: "Pause",
+            accepts_text: false,
+        }],
+    }
+}
+
+#[test]
+fn the_continuity_documents_round_trip_through_a_cache() {
+    let mut publisher = StatePublisher::new(Incarnation::from_raw(21));
+    let focus = Focus {
+        mode: FocusMode::Named("Work"),
+        until_unix_ms: Some(1_700_003_600_000),
+        stamp: HybridTimestamp {
+            wall_ms: 1_700_000_000_000,
+            counter: 3,
+        },
+    };
+    let live = LiveActivities {
+        activities: vec![timer("Timer")],
+    };
+    let routes = AudioRoutes {
+        headsets: vec![Headset {
+            address: "AA:BB:CC:DD:EE:FF",
+            name: "Buds",
+            connected: true,
+        }],
+    };
+    let _ = publisher.publish(&focus).unwrap();
+    let _ = publisher.publish(&live).unwrap();
+    let _ = publisher.publish(&routes).unwrap();
+
+    let mut cache = StateCache::default();
+    cache.apply_snapshot(OWNER, &publisher.snapshot(TopicSet::ALL));
+    assert_eq!(cache.get::<Focus<'_>>(&OWNER).unwrap(), Some(focus));
+    assert_eq!(cache.get::<LiveActivities<'_>>(&OWNER).unwrap(), Some(live));
+    assert_eq!(cache.get::<AudioRoutes<'_>>(&OWNER).unwrap(), Some(routes));
+}
+
+#[test]
+fn live_activities_breaking_a_cap_are_refused_at_publication() {
+    let mut publisher = StatePublisher::new(Incarnation::from_raw(22));
+    let crowded = LiveActivities {
+        activities: vec![timer("Timer"); MAX_LIVE_ACTIVITIES + 1],
+    };
+    let bytes = postcard::to_allocvec(&crowded).unwrap();
+    assert!(matches!(
+        publisher.publish_encoded(Topic::LiveActivities, &bytes),
+        Err(SignalingError::TooManyEntries { .. })
+    ));
+
+    let long = "t".repeat(MAX_LIVE_FIELD_BYTES + 1);
+    let wordy = LiveActivities {
+        activities: vec![timer(&long)],
+    };
+    let bytes = postcard::to_allocvec(&wordy).unwrap();
+    assert!(matches!(
+        publisher.publish_encoded(Topic::LiveActivities, &bytes),
+        Err(SignalingError::FieldTooLong { .. })
+    ));
+
+    let oversized = vec![0; 24 * 1024 + 1];
+    assert!(matches!(
+        publisher.publish_encoded(Topic::LiveActivities, &oversized),
+        Err(SignalingError::DocumentTooLarge { .. })
+    ));
+
+    let headset = Headset {
+        address: "AA:BB:CC:DD:EE:FF",
+        name: "Buds",
+        connected: false,
+    };
+    let routes = AudioRoutes {
+        headsets: vec![headset; MAX_HEADSETS + 1],
+    };
+    let bytes = postcard::to_allocvec(&routes).unwrap();
+    assert!(
+        publisher
+            .publish_encoded(Topic::AudioRoutes, &bytes)
+            .is_err()
+    );
+}
+
+#[test]
+fn a_focus_mode_from_the_future_is_refused_rather_than_misread() {
+    let mut publisher = StatePublisher::new(Incarnation::from_raw(23));
+    let off = postcard::to_allocvec(&Focus {
+        mode: FocusMode::Off,
+        until_unix_ms: None,
+        stamp: HybridTimestamp::default(),
+    })
+    .unwrap();
+    assert_eq!(off.first(), Some(&0));
+    let mut unknown = off.clone();
+    if let Some(mode) = unknown.first_mut() {
+        *mode = 3;
+    }
+    assert!(publisher.publish_encoded(Topic::Focus, &unknown).is_err());
+    assert!(publisher.publish_encoded(Topic::Focus, &off).is_ok());
 }

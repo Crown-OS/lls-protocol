@@ -13,12 +13,17 @@ const ALWAYS_SHARED: TopicSet = TopicSet::EMPTY
     .with(Topic::MediaSession)
     .with(Topic::Volume);
 
-const FEATURE_TOPICS: [(Feature, Topic); 5] = [
+/// Each topic is gated by exactly one feature: the publisher is shared by every peer, so a
+/// document cannot be redacted for one of them.
+const FEATURE_TOPICS: [(Feature, Topic); 8] = [
     (Feature::Battery, Topic::Battery),
     (Feature::Calls, Topic::CallState),
     (Feature::Notifications, Topic::Notifications),
     (Feature::Clipboard, Topic::Clipboard),
     (Feature::Hotspot, Topic::Hotspot),
+    (Feature::Focus, Topic::Focus),
+    (Feature::LiveActivities, Topic::LiveActivities),
+    (Feature::AudioHandoff, Topic::AudioRoutes),
 ];
 
 /// Bytes an update adds around its payload: topic, version and length prefixes, generously.
@@ -100,6 +105,18 @@ mod tests {
                 .all(|message| message.len() <= MAX_MESSAGE_LEN)
         );
         Ok(())
+    }
+
+    #[test]
+    fn every_topic_is_always_shared_or_gated_by_exactly_one_feature() {
+        for topic in Topic::ALL {
+            let gates = FEATURE_TOPICS
+                .iter()
+                .filter(|(_, gated)| *gated == topic)
+                .count();
+            let always = usize::from(ALWAYS_SHARED.contains(topic));
+            assert_eq!(gates + always, 1, "{topic:?}");
+        }
     }
 
     #[test]

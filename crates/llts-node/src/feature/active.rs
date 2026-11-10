@@ -2,6 +2,7 @@ use llts_signaling::device::Feature;
 use llts_signaling::message::{MuxClass, StreamParams, StreamRef};
 
 use crate::feature::{FeatureRequest, MediaRole};
+use crate::output::FeatureFailure;
 
 /// How far a feature's stream has come.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,7 +36,7 @@ pub(crate) struct ActiveFeatures {
     entries: heapless::Vec<ActiveFeature, MEDIA_FEATURES>,
 }
 
-pub(crate) const MEDIA_FEATURES: usize = 4;
+pub(crate) const MEDIA_FEATURES: usize = 8;
 
 impl ActiveFeatures {
     pub(crate) fn get(&self, feature: Feature) -> Option<&ActiveFeature> {
@@ -55,9 +56,15 @@ impl ActiveFeatures {
     }
 
     /// Adds `entry`, replacing any earlier attempt at the same feature.
-    pub(crate) fn insert(&mut self, entry: ActiveFeature) {
+    ///
+    /// # Errors
+    ///
+    /// Returns [`FeatureFailure::AlreadyActive`] when every media slot is taken.
+    pub(crate) fn insert(&mut self, entry: ActiveFeature) -> Result<(), FeatureFailure> {
         self.remove(entry.feature());
-        let _ = self.entries.push(entry);
+        self.entries
+            .push(entry)
+            .map_err(|_| FeatureFailure::AlreadyActive)
     }
 
     pub(crate) fn remove(&mut self, feature: Feature) -> Option<ActiveFeature> {

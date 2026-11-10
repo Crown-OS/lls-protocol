@@ -21,8 +21,9 @@ use llts_node::{
 use llts_signaling::device::{DeviceClass, Feature};
 use llts_signaling::discovery::Beacon;
 use llts_signaling::message::{
-    Call, CameraLens, Direction, Media, MessageType, StartCamera, StartMirror, StreamParams,
-    VideoCodec, VideoLimits,
+    AudioCodec, AudioParams, Call, CameraLens, Direction, FetchBlob, Lane, ListConversations,
+    Media, Message, MessageType, OpenUri, PageRequest, RequestError, RequestId, Ring, RingAction,
+    Signal, StartAudio, StartCamera, StartCast, StartMirror, StreamParams, VideoCodec, VideoLimits,
 };
 use llts_signaling::state::{
     Battery, Clipboard, ClipboardContent, DeviceInfo, Hotspot, Incarnation, Topic,
@@ -1033,4 +1034,300 @@ fn a_peer_seen_between_pairing_and_its_session_is_not_dialled_again() {
             .feature_state(&phone, Feature::Mirror),
         Some(FeatureState::Active)
     );
+}
+
+fn application(sim: &Sim, index: usize) -> Vec<Vec<u8>> {
+    sim.nodes[index]
+        .events
+        .iter()
+        .filter_map(|event| match event {
+            AppEvent::Application { message, .. } => Some(message.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+fn share(sim: &mut Sim, feature: Feature) {
+    let (laptop, phone) = (sim.id(LAPTOP), sim.id(PHONE));
+    for (index, peer) in [(LAPTOP, phone), (PHONE, laptop)] {
+        sim.app(
+            index,
+            AppCommand::SetFeature {
+                peer,
+                feature,
+                enabled: true,
+            },
+        );
+    }
+}
+
+fn list_conversations() -> Vec<u8> {
+    ListConversations {
+        request: RequestId(1),
+        page: PageRequest {
+            cursor: None,
+            limit: 20,
+        },
+    }
+    .encode(Vec::new())
+    .unwrap()
+}
+
+#[test]
+fn application_messages_cross_unread_once_their_feature_is_shared() {
+    let mut sim = paired();
+    let phone = sim.id(PHONE);
+    let request = list_conversations();
+
+    sim.app(
+        LAPTOP,
+        AppCommand::SendApplication {
+            peer: phone,
+            message: &request,
+        },
+    );
+    assert!(sim.nodes[LAPTOP].events.iter().any(|event| matches!(
+        event,
+        AppEvent::Error(llts_node::NodeError::FeatureUnavailable {
+            feature: Feature::Messages,
+            ..
+        })
+    )));
+    assert!(application(&sim, PHONE).is_empty());
+
+    share(&mut sim, Feature::Messages);
+    sim.app(
+        LAPTOP,
+        AppCommand::SendApplication {
+            peer: phone,
+            message: &request,
+        },
+    );
+    assert_eq!(application(&sim, PHONE), [request]);
+    assert_eq!(
+        sim.nodes[LAPTOP].sent_count(phone, MessageType::ListConversationsV1),
+        1
+    );
+
+    let ring = Ring {
+        action: RingAction::Start,
+    }
+    .encode(Vec::new())
+    .unwrap();
+    let laptop = sim.id(LAPTOP);
+    let now = sim.now();
+    assert!(matches!(
+        sim.nodes[PHONE].node.send_application(now, laptop, &ring),
+        Err(llts_node::NodeError::FeatureUnavailable {
+            feature: Feature::FindMy,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn messages_the_node_handles_itself_are_not_application_messages() {
+    let mut sim = paired();
+    let phone = sim.id(PHONE);
+    let now = sim.now();
+    let lock = llts_signaling::message::Lock.encode(Vec::new()).unwrap();
+    assert!(matches!(
+        sim.nodes[LAPTOP].node.send_application(now, phone, &lock),
+        Err(llts_node::NodeError::NotApplication(0x0404))
+    ));
+}
+
+#[test]
+fn an_application_message_on_the_wrong_lane_is_dropped() {
+    let mut sim = paired();
+    share(&mut sim, Feature::Links);
+    let laptop = sim.id(LAPTOP);
+    let uri = OpenUri {
+        uri: "https://crownos.org",
+    }
+    .encode(Vec::new())
+    .unwrap();
+    sim.input(
+        PHONE,
+        NodeInput::Link(llts_node::LinkEvent::Message {
+            peer: laptop,
+            stream: Lane::Bulk.stream(),
+            bytes: &uri,
+        }),
+    );
+    assert!(application(&sim, PHONE).is_empty());
+    sim.input(
+        PHONE,
+        NodeInput::Link(llts_node::LinkEvent::Message {
+            peer: laptop,
+            stream: Lane::Control.stream(),
+            bytes: &uri,
+        }),
+    );
+    assert_eq!(application(&sim, PHONE), [uri]);
+}
+
+#[test]
+fn a_fetch_under_a_feature_not_shared_is_refused_by_the_node() {
+    let mut sim = paired();
+    let laptop = sim.id(LAPTOP);
+    for feature in [Feature::Contacts.bit_index(), 31] {
+        let fetch = FetchBlob {
+            request: RequestId(u32::from(feature)),
+            feature,
+            key: "contact-photo/1/2",
+        }
+        .encode(Vec::new())
+        .unwrap();
+        sim.input(
+            PHONE,
+            NodeInput::Link(llts_node::LinkEvent::Message {
+                peer: laptop,
+                stream: Lane::Control.stream(),
+                bytes: &fetch,
+            }),
+        );
+    }
+    sim.settle();
+    assert!(application(&sim, PHONE).is_empty());
+    let answers: Vec<(RequestId, RequestError)> = application(&sim, LAPTOP)
+        .iter()
+        .filter_map(|message| match Signal::decode(message).unwrap() {
+            Signal::RequestFailedV1(failed) => Some((failed.request, failed.error)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        answers,
+        [
+            (
+                RequestId(u32::from(Feature::Contacts.bit_index())),
+                RequestError::PERMISSION_DENIED
+            ),
+            (RequestId(31), RequestError::PERMISSION_DENIED),
+        ]
+    );
+
+    share(&mut sim, Feature::Contacts);
+    let phone = sim.id(PHONE);
+    let fetch = FetchBlob {
+        request: RequestId(40),
+        feature: Feature::Contacts.bit_index(),
+        key: "contact-photo/1/2",
+    }
+    .encode(Vec::new())
+    .unwrap();
+    sim.app(
+        LAPTOP,
+        AppCommand::SendApplication {
+            peer: phone,
+            message: &fetch,
+        },
+    );
+    assert_eq!(application(&sim, PHONE), [fetch]);
+}
+
+#[test]
+fn both_application_lanes_open_with_every_session() {
+    let sim = paired();
+    let (laptop, phone) = (sim.id(LAPTOP), sim.id(PHONE));
+    for (index, peer) in [(LAPTOP, phone), (PHONE, laptop)] {
+        let streams = &sim.nodes[index].sessions[&peer].streams;
+        assert!(streams.contains_key(&Lane::Bulk.stream()));
+        assert!(streams.contains_key(&Lane::Blob.stream()));
+    }
+}
+
+#[test]
+fn casting_and_audio_handoff_negotiate_like_mirroring() {
+    let mut sim = paired();
+    let (laptop, phone) = (sim.id(LAPTOP), sim.id(PHONE));
+    sim.app(
+        LAPTOP,
+        AppCommand::StartFeature {
+            peer: phone,
+            request: FeatureRequest::Cast(StartCast {
+                direction: Direction::FromPeer,
+                limits: LIMITS,
+            }),
+        },
+    );
+    assert!(matches!(
+        sim.nodes[PHONE].media.last(),
+        Some(MediaRequest::Start {
+            role: MediaRole::Encoder,
+            request: FeatureRequest::Cast(StartCast {
+                direction: Direction::ToPeer,
+                ..
+            }),
+            params: StreamParams::Video(_),
+            ..
+        })
+    ));
+
+    sim.app(
+        PHONE,
+        AppCommand::StartFeature {
+            peer: laptop,
+            request: FeatureRequest::Audio(StartAudio {
+                direction: Direction::ToPeer,
+            }),
+        },
+    );
+    let stereo = StreamParams::Audio(AudioParams {
+        codec: AudioCodec::Opus,
+        sample_rate: 48_000,
+        channels: 2,
+        frame_ms: 20,
+    });
+    assert!(matches!(
+        sim.nodes[LAPTOP].media.last(),
+        Some(MediaRequest::Start {
+            role: MediaRole::Decoder,
+            request: FeatureRequest::Audio(_),
+            params,
+            ..
+        }) if *params == stereo
+    ));
+    for (index, peer) in [(LAPTOP, phone), (PHONE, laptop)] {
+        for feature in [Feature::Cast, Feature::AudioHandoff] {
+            assert_eq!(
+                sim.nodes[index].node.feature_state(&peer, feature),
+                Some(FeatureState::Active)
+            );
+        }
+    }
+}
+
+#[test]
+fn a_peer_focus_orders_the_next_local_stamp_after_it() {
+    let mut sim = paired();
+    share(&mut sim, Feature::Focus);
+    let ahead = llts_signaling::state::HybridTimestamp {
+        wall_ms: sim.now().unix_ms + 60_000,
+        counter: 4,
+    };
+    let now = sim.now();
+    let _ = sim.nodes[PHONE]
+        .node
+        .publish(
+            now,
+            &llts_signaling::state::Focus {
+                mode: llts_signaling::state::FocusMode::DoNotDisturb,
+                until_unix_ms: None,
+                stamp: ahead,
+            },
+        )
+        .unwrap();
+    sim.advance(Duration::from_millis(50));
+    let phone = sim.id(PHONE);
+    assert!(
+        sim.nodes[LAPTOP]
+            .node
+            .remote_state::<llts_signaling::state::Focus<'_>>(&phone)
+            .unwrap()
+            .is_some()
+    );
+    let now = sim.now();
+    assert!(sim.nodes[LAPTOP].node.stamp(now) > ahead);
 }

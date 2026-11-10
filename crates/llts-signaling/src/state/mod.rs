@@ -20,9 +20,11 @@ pub use crate::util::hlc::{HybridClock, HybridTimestamp};
 pub use cache::{Applied, StateCache};
 pub use outbox::StateOutbox;
 pub use payload::{
-    Battery, CallInfo, CallState, CallStatus, Clipboard, ClipboardContent, ClipboardOrder,
-    DeviceInfo, Hotspot, MAX_INLINE_CLIPBOARD_BYTES, MediaSession, Notification,
-    NotificationAction, Notifications, TopicPayload, Volume,
+    AudioRoutes, Battery, CallInfo, CallState, CallStatus, Chronometer, Clipboard,
+    ClipboardContent, ClipboardOrder, DeviceInfo, Focus, FocusMode, Headset, Hotspot,
+    LiveActivities, LiveActivity, LiveProgress, MAX_HEADSETS, MAX_INLINE_CLIPBOARD_BYTES,
+    MAX_LIVE_ACTIONS, MAX_LIVE_ACTIVITIES, MAX_LIVE_DOCUMENT_BYTES, MAX_LIVE_FIELD_BYTES,
+    MediaSession, Notification, NotificationAction, Notifications, TopicPayload, Volume,
 };
 pub use publisher::{Published, StatePublisher};
 pub use topic::{Topic, TopicSet};

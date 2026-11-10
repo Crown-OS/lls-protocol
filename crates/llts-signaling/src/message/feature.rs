@@ -52,3 +52,16 @@ pub struct UnicursorLeave {
 pub struct Stop {
     pub feature: Feature,
 }
+
+/// Casts one app's video; `direction` is seen from the requester, like a mirror's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct StartCast {
+    pub direction: Direction,
+    pub limits: VideoLimits,
+}
+
+/// Plays one device's audio on the other; `direction` is seen from the requester.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct StartAudio {
+    pub direction: Direction,
+}

@@ -12,6 +12,7 @@ pub mod media;
 pub mod pairing;
 mod policy;
 mod registry;
+pub mod signals;
 pub mod state;
 
 use jni::{Env, EnvUnowned};
@@ -32,7 +33,7 @@ mod tests {
     use std::collections::BTreeSet;
 
     /// Every `Llts.native*` method this library exports, in the order `Llts.kt` declares them.
-    const EXPORTED_NATIVE_METHODS: [&str; 21] = [
+    const EXPORTED_NATIVE_METHODS: [&str; 22] = [
         "nativeStart",
         "nativeStop",
         "nativeNextEvent",
@@ -54,16 +55,18 @@ mod tests {
         "nativeCreateEncoderSurface",
         "nativeAttachDecoderSurface",
         "nativeDetachSurface",
+        "nativeSendSignal",
     ];
 
     const SYMBOL_PREFIX: &str = "fn Java_com_crownos_link_llts_Llts_";
 
-    const SOURCES: [&str; 6] = [
+    const SOURCES: [&str; 7] = [
         include_str!("discovery.rs"),
         include_str!("features.rs"),
         include_str!("lifecycle.rs"),
         include_str!("media.rs"),
         include_str!("pairing.rs"),
+        include_str!("signals.rs"),
         include_str!("state.rs"),
     ];
 

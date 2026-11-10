@@ -7,8 +7,9 @@ mod peer_command;
 
 use core::time::Duration;
 use std::net::{IpAddr, SocketAddr};
+use std::sync::mpsc::SyncSender;
 
-use llts_node::{FeatureRequest, MediaRole};
+use llts_node::{FeatureRequest, MediaRole, NodeError};
 use llts_signaling::device::{DeviceId, Feature};
 use llts_signaling::discovery::Beacon;
 use llts_signaling::state::Topic;
@@ -21,6 +22,7 @@ pub(crate) use parse::{
 pub(crate) use peer_command::PeerCommand;
 
 use crate::media::Surface;
+use crate::state_json::LocalDocument;
 
 /// One request for the runtime thread, owning everything it carries.
 #[derive(Debug)]
@@ -29,7 +31,14 @@ pub(crate) enum Command {
     Node(NodeCommand),
     PublishState {
         topic: Topic,
-        payload: Vec<u8>,
+        document: LocalDocument,
+    },
+    /// An encoded application message for `peer`; the node's verdict goes back on `outcome`,
+    /// so the caller learns at once whether it was sent.
+    SendApplication {
+        peer: DeviceId,
+        message: Vec<u8>,
+        outcome: SyncSender<Result<(), NodeError>>,
     },
     /// One moment of input, already framed as an Input-stream batch.
     SendInput {

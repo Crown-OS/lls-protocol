@@ -14,12 +14,15 @@ pub enum Topic {
     Clipboard,
     Volume,
     Hotspot,
+    Focus,
+    LiveActivities,
+    AudioRoutes,
 }
 
 impl Topic {
     pub const COUNT: usize = Self::ALL.len();
 
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 11] = [
         Self::DeviceInfo,
         Self::Battery,
         Self::MediaSession,
@@ -28,6 +31,9 @@ impl Topic {
         Self::Clipboard,
         Self::Volume,
         Self::Hotspot,
+        Self::Focus,
+        Self::LiveActivities,
+        Self::AudioRoutes,
     ];
 
     pub(crate) const fn index(self) -> usize {

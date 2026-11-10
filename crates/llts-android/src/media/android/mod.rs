@@ -80,11 +80,14 @@ impl MediaPipelines {
     pub(crate) fn start(
         &mut self,
         peer: DeviceId,
-        _request: FeatureRequest,
+        request: FeatureRequest,
         role: MediaRole,
         stream: StreamRef,
         params: StreamParams,
     ) -> Result<(), MediaError> {
+        if let FeatureRequest::Cast(_) | FeatureRequest::Audio(_) = request {
+            return Err(MediaError::Unimplemented(request.feature()));
+        }
         let Some(stream) = stream_key(stream) else {
             return Ok(());
         };

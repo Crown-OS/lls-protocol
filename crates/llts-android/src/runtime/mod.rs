@@ -6,6 +6,7 @@
 //! calls into the JVM.
 
 mod advertisements;
+mod application;
 mod commands;
 mod driver_events;
 mod event_loop;
@@ -121,6 +122,22 @@ impl Instance {
             .map_err(|_| BridgeError::NotRunning)?;
         self.waker.wake();
         Ok(())
+    }
+
+    /// Hands an encoded application message to the runtime thread and waits for the node's
+    /// verdict, so the caller hears at once that a peer is gone or a feature not shared.
+    pub(crate) fn send_application(
+        &self,
+        peer: DeviceId,
+        message: Vec<u8>,
+    ) -> Result<(), BridgeError> {
+        let (outcome, verdict) = mpsc::sync_channel(1);
+        self.send(Command::SendApplication {
+            peer,
+            message,
+            outcome,
+        })?;
+        Ok(verdict.recv().map_err(|_| BridgeError::NotRunning)??)
     }
 
     /// Blocks until the runtime has something to say; `None` once it has stopped.

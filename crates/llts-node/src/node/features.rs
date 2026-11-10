@@ -479,8 +479,16 @@ impl Node {
     }
 
     fn insert_feature(&mut self, peer: DeviceId, active: ActiveFeature) {
-        if let Some(session) = self.session_mut(&peer) {
-            session.features.insert(active);
+        let feature = active.feature();
+        let refused = self
+            .session_mut(&peer)
+            .and_then(|session| session.features.insert(active).err());
+        if let Some(reason) = refused {
+            self.emit(AppEvent::FeatureFailed {
+                peer,
+                feature,
+                reason,
+            });
         }
     }
 

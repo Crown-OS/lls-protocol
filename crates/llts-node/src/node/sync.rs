@@ -4,7 +4,8 @@
 use llts_signaling::device::DeviceId;
 use llts_signaling::message::{Capabilities, Signal, Snapshot, Subscribe, Unsubscribe, Update};
 use llts_signaling::state::{
-    Applied, Clipboard, DeviceInfo, HybridTimestamp, Published, Topic, TopicPayload, TopicSet,
+    Applied, Clipboard, DeviceInfo, Focus, HybridTimestamp, Published, Topic, TopicPayload,
+    TopicSet,
 };
 
 use crate::output::{AppEvent, FeatureFailure};
@@ -45,6 +46,13 @@ impl Node {
     /// Stamps a clipboard the user just copied on this device, ordered after every clipboard
     /// seen from a peer.
     pub const fn clipboard_stamp(&mut self, now: Now) -> HybridTimestamp {
+        self.now = now;
+        self.clock.tick(now.unix_ms)
+    }
+
+    /// Stamps a local change to a document ordered across devices, such as the focus mode the
+    /// user just picked, after every stamp seen from a peer.
+    pub const fn stamp(&mut self, now: Now) -> HybridTimestamp {
         self.now = now;
         self.clock.tick(now.unix_ms)
     }
@@ -244,6 +252,11 @@ impl Node {
             Topic::Clipboard => {
                 if let Ok(Some(clipboard)) = self.cache.get::<Clipboard<'_>>(&peer) {
                     self.clock.observe(clipboard.stamp, self.now.unix_ms);
+                }
+            }
+            Topic::Focus => {
+                if let Ok(Some(focus)) = self.cache.get::<Focus<'_>>(&peer) {
+                    self.clock.observe(focus.stamp, self.now.unix_ms);
                 }
             }
             Topic::DeviceInfo => {

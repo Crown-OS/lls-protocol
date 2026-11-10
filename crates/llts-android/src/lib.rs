@@ -17,6 +17,7 @@ mod event_json;
 mod input_json;
 mod media;
 mod runtime;
+mod signal_json;
 mod state_json;
 mod store;
 mod util;

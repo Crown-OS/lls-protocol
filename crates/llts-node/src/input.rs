@@ -121,6 +121,12 @@ pub enum AppCommand<'a> {
         peer: DeviceId,
         command: OutgoingCommand<'a>,
     },
+    /// Sends an encoded application message, which the node routes by its type without
+    /// reading it; see [`MessageType::app_route`](llts_signaling::message::MessageType::app_route).
+    SendApplication {
+        peer: DeviceId,
+        message: &'a [u8],
+    },
 }
 
 /// A command for a peer to carry out on its side.

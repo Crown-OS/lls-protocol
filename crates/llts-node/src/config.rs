@@ -1,6 +1,6 @@
 use core::time::Duration;
 
-use llts_signaling::device::{DeviceClass, DeviceId, Feature, FeatureSet};
+use llts_signaling::device::{DeviceClass, DeviceId, FeatureSet};
 use llts_signaling::message::Capabilities;
 use llts_transport::pairing::TrustedPeer;
 
@@ -58,7 +58,7 @@ pub struct NodeConfig {
 impl Default for NodeConfig {
     fn default() -> Self {
         Self {
-            default_features: Feature::ALL.into_iter().collect(),
+            default_features: FeatureSet::DEFAULT,
             pairing_window: Duration::from_secs(120),
             code_confirmation: Duration::from_secs(60),
             dial_timeout: Duration::from_secs(4),
@@ -88,5 +88,17 @@ impl KnownPeer {
             class: class_from_transport(peer.class),
             enabled,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_new_pairing_starts_without_personal_features() {
+        let features = NodeConfig::default().default_features;
+        assert!(features.shared_with(FeatureSet::PERSONAL).is_empty());
+        assert!(features.contains(llts_signaling::device::Feature::Mirror));
     }
 }

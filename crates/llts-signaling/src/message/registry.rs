@@ -1,9 +1,15 @@
 use crate::SignalingError;
 use crate::message::{
-    AcceptStream, Call, Capabilities, CloseStream, Envelope, FileOffer, Goodbye, KeyframeRequest,
-    Lock, Media, Message, OpenStream, Rekey, Reply, SetHotspot, SetVolume, Snapshot, StartCamera,
-    StartMic, StartMirror, StartMonitor, Stop, Subscribe, UnicursorEnter, UnicursorLeave,
-    Unsubscribe, Update,
+    AcceptStream, BlobAck, BlobCancel, BlobChunk, BlobEnd, BlobStart, Call, CallCounters,
+    CallLogPage, Capabilities, Capture, CloseStream, ContactCounters, ContactPage,
+    ConversationPage, DragCancel, DragDrop, DragEnter, Envelope, FetchBlob, FileListening,
+    FileOffer, FilePush, Goodbye, KeyframeRequest, ListCallLog, ListContacts, ListConversations,
+    ListMessages, ListVoicemail, LiveActivityAction, Locate, Location, Lock, MarkRead, Media,
+    Message, MessageCounters, MessageEvent, MessagePage, OpenStream, OpenUri, Rekey,
+    ReleaseHeadset, Reply, RequestCancel, RequestDone, RequestFailed, Ring, SendMessage,
+    SetHotspot, SetVolume, Snapshot, StartAudio, StartCamera, StartCast, StartMic, StartMirror,
+    StartMonitor, Stop, Subscribe, TakeHeadset, UnicursorEnter, UnicursorLeave, Unsubscribe,
+    Update, Validate, VoicemailPage, WifiCredentials, WifiRequest,
 };
 
 /// The lowest code the application may use; llts-core reserves every control message below it.
@@ -87,6 +93,18 @@ macro_rules! message_registry {
                     Self::Unknown { .. } => None,
                 }
             }
+
+            /// Checks the body against the caps its type keeps to; see [`Validate`].
+            ///
+            /// # Errors
+            ///
+            /// Returns the first cap the body breaks.
+            pub fn validate(&self) -> Result<(), SignalingError> {
+                match self {
+                    $(Self::$variant(message) => Validate::validate(message),)+
+                    Self::Unknown { .. } => Ok(()),
+                }
+            }
         }
     };
 }
@@ -121,4 +139,78 @@ message_registry! { 'a;
     UnicursorEnterV1 = 0x0504 => UnicursorEnter,
     UnicursorLeaveV1 = 0x0505 => UnicursorLeave,
     StopV1 = 0x0506 => Stop,
+
+    OpenUriV1 = 0x0407 => OpenUri<'a>,
+    LiveActivityActionV1 = 0x0408 => LiveActivityAction<'a>,
+    RingV1 = 0x0409 => Ring,
+    WifiCredentialsV1 = 0x040A => WifiCredentials<'a>,
+    TakeHeadsetV1 = 0x040B => TakeHeadset<'a>,
+    ReleaseHeadsetV1 = 0x040C => ReleaseHeadset<'a>,
+    FileListeningV1 = 0x040D => FileListening<'a>,
+    FilePushV1 = 0x040E => FilePush<'a>,
+
+    StartCastV1 = 0x0507 => StartCast,
+    StartAudioV1 = 0x0508 => StartAudio,
+    DragEnterV1 = 0x0509 => DragEnter<'a>,
+    DragDropV1 = 0x050A => DragDrop,
+    DragCancelV1 = 0x050B => DragCancel,
+
+    RequestFailedV1 = 0x0600 => RequestFailed<'a>,
+    RequestDoneV1 = 0x0601 => RequestDone<'a>,
+    ListConversationsV1 = 0x0602 => ListConversations<'a>,
+    ConversationPageV1 = 0x0603 => ConversationPage<'a>,
+    ListMessagesV1 = 0x0604 => ListMessages<'a>,
+    MessagePageV1 = 0x0605 => MessagePage<'a>,
+    SendMessageV1 = 0x0606 => SendMessage<'a>,
+    MarkReadV1 = 0x0607 => MarkRead,
+    ListCallLogV1 = 0x0608 => ListCallLog<'a>,
+    CallLogPageV1 = 0x0609 => CallLogPage<'a>,
+    ListVoicemailV1 = 0x060A => ListVoicemail<'a>,
+    VoicemailPageV1 = 0x060B => VoicemailPage<'a>,
+    ListContactsV1 = 0x060C => ListContacts<'a>,
+    ContactPageV1 = 0x060D => ContactPage<'a>,
+    FetchBlobV1 = 0x060E => FetchBlob<'a>,
+    CaptureV1 = 0x060F => Capture,
+    LocateV1 = 0x0610 => Locate,
+    LocationV1 = 0x0611 => Location,
+    WifiRequestV1 = 0x0612 => WifiRequest<'a>,
+    RequestCancelV1 = 0x0613 => RequestCancel,
+
+    MessageEventV1 = 0x0700 => MessageEvent<'a>,
+    BlobStartV1 = 0x0701 => BlobStart<'a>,
+    BlobChunkV1 = 0x0702 => BlobChunk<'a>,
+    BlobEndV1 = 0x0703 => BlobEnd,
+    BlobAckV1 = 0x0704 => BlobAck,
+    BlobCancelV1 = 0x0705 => BlobCancel,
+    MessageCountersV1 = 0x0706 => MessageCounters,
+    CallCountersV1 = 0x0707 => CallCounters,
+    ContactCountersV1 = 0x0708 => ContactCounters,
 }
+
+impl Validate for Capabilities {}
+impl Validate for Goodbye {}
+impl Validate for Rekey {}
+impl Validate for KeyframeRequest {}
+impl Validate for OpenStream {}
+impl Validate for AcceptStream {}
+impl Validate for CloseStream {}
+impl Validate for Subscribe {}
+impl Validate for Unsubscribe {}
+impl Validate for Update<'_> {}
+impl Validate for Snapshot<'_> {}
+impl Validate for Call<'_> {}
+impl Validate for Media {}
+impl Validate for Reply<'_> {}
+impl Validate for SetVolume {}
+impl Validate for Lock {}
+impl Validate for SetHotspot {}
+impl Validate for FileOffer {}
+impl Validate for StartMirror {}
+impl Validate for StartCamera {}
+impl Validate for StartMic {}
+impl Validate for StartMonitor {}
+impl Validate for UnicursorEnter {}
+impl Validate for UnicursorLeave {}
+impl Validate for Stop {}
+impl Validate for StartCast {}
+impl Validate for StartAudio {}

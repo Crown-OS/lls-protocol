@@ -53,6 +53,23 @@ pub(crate) enum BridgeError {
 
     #[error("the media pipeline failed")]
     Media(#[from] MediaError),
+
+    #[error("malformed {kind} body at {line}:{column}")]
+    MalformedSignal {
+        kind: &'static str,
+        line: usize,
+        column: usize,
+    },
+
+    #[error("the {kind} body breaks a limit")]
+    InvalidSignal {
+        kind: &'static str,
+        #[source]
+        source: SignalingError,
+    },
+
+    #[error("a peer's application message could not be read")]
+    Signal(#[source] SignalingError),
 }
 
 impl BridgeError {
@@ -71,6 +88,8 @@ impl BridgeError {
                 | Self::StreamIndex(_)
                 | Self::Beacon(_)
                 | Self::State(_)
+                | Self::MalformedSignal { .. }
+                | Self::InvalidSignal { .. }
         )
     }
 }

@@ -1,7 +1,7 @@
 use llts_signaling::device::Feature;
 use llts_signaling::message::{
-    AudioCodec, AudioParams, Direction, Signal, StartCamera, StartMic, StartMirror, StartMonitor,
-    StreamParams, VideoCodec, VideoParams,
+    AudioCodec, AudioParams, Direction, Signal, StartAudio, StartCamera, StartCast, StartMic,
+    StartMirror, StartMonitor, StreamParams, VideoCodec, VideoLimits, VideoParams,
 };
 
 /// A feature that needs a media stream, as the user asked for it on this device.
@@ -15,6 +15,10 @@ pub enum FeatureRequest {
     Mic,
     /// Uses the peer as an extra monitor for this device.
     Monitor(StartMonitor),
+    /// Casts one app's video; `direction` is seen from this device, like a mirror's.
+    Cast(StartCast),
+    /// Plays one device's audio on the other; `direction` is seen from this device.
+    Audio(StartAudio),
 }
 
 /// Which half of a media pipeline this device runs for a feature.
@@ -35,7 +39,8 @@ pub enum FeatureState {
 }
 
 const OPUS_SAMPLE_RATE: u32 = 48_000;
-const OPUS_FRAME_MS: u8 = 10;
+const VOICE_FRAME_MS: u8 = 10;
+const MUSIC_FRAME_MS: u8 = 20;
 
 impl FeatureRequest {
     pub const fn feature(&self) -> Feature {
@@ -44,18 +49,34 @@ impl FeatureRequest {
             Self::Camera(_) => Feature::Camera,
             Self::Mic => Feature::Mic,
             Self::Monitor(_) => Feature::Monitor,
+            Self::Cast(_) => Feature::Cast,
+            Self::Audio(_) => Feature::AudioHandoff,
         }
     }
 
     /// Which half this device runs when it is the one that asked.
     pub const fn requester_role(&self) -> MediaRole {
         match self {
-            Self::Mirror(StartMirror {
-                direction: Direction::ToPeer,
-                ..
-            })
-            | Self::Monitor(_) => MediaRole::Encoder,
-            Self::Mirror(_) | Self::Camera(_) | Self::Mic => MediaRole::Decoder,
+            Self::Monitor(_) => MediaRole::Encoder,
+            Self::Camera(_) | Self::Mic => MediaRole::Decoder,
+            Self::Mirror(_) | Self::Cast(_) | Self::Audio(_) => self.directed_role(),
+        }
+    }
+
+    /// The role of a request with a direction: whoever's media flows to the peer encodes.
+    const fn directed_role(&self) -> MediaRole {
+        match self.direction() {
+            Some(Direction::ToPeer) => MediaRole::Encoder,
+            Some(Direction::FromPeer) | None => MediaRole::Decoder,
+        }
+    }
+
+    const fn direction(&self) -> Option<Direction> {
+        match self {
+            Self::Mirror(StartMirror { direction, .. })
+            | Self::Cast(StartCast { direction, .. })
+            | Self::Audio(StartAudio { direction }) => Some(*direction),
+            Self::Camera(_) | Self::Mic | Self::Monitor(_) => None,
         }
     }
 
@@ -65,10 +86,12 @@ impl FeatureRequest {
             Self::Camera(camera) => Signal::StartCameraV1(camera),
             Self::Mic => Signal::StartMicV1(StartMic),
             Self::Monitor(monitor) => Signal::StartMonitorV1(monitor),
+            Self::Cast(cast) => Signal::StartCastV1(cast),
+            Self::Audio(audio) => Signal::StartAudioV1(audio),
         }
     }
 
-    /// The request a peer sent, with a mirror's direction restated from this device's side.
+    /// The request a peer sent, with its direction restated from this device's side.
     pub(crate) const fn from_peer(signal: &Signal<'_>) -> Option<Self> {
         match *signal {
             Signal::StartMirrorV1(mirror) => Some(Self::Mirror(StartMirror {
@@ -78,6 +101,13 @@ impl FeatureRequest {
             Signal::StartCameraV1(camera) => Some(Self::Camera(camera)),
             Signal::StartMicV1(_) => Some(Self::Mic),
             Signal::StartMonitorV1(monitor) => Some(Self::Monitor(monitor)),
+            Signal::StartCastV1(cast) => Some(Self::Cast(StartCast {
+                direction: flip(cast.direction),
+                ..cast
+            })),
+            Signal::StartAudioV1(audio) => Some(Self::Audio(StartAudio {
+                direction: flip(audio.direction),
+            })),
             _ => None,
         }
     }
@@ -85,12 +115,9 @@ impl FeatureRequest {
     /// The role this device runs when the request came from the peer.
     pub(crate) const fn responder_role(&self) -> MediaRole {
         match self {
-            Self::Mirror(StartMirror {
-                direction: Direction::ToPeer,
-                ..
-            }) => MediaRole::Encoder,
-            Self::Mirror(_) | Self::Monitor(_) => MediaRole::Decoder,
+            Self::Monitor(_) => MediaRole::Decoder,
             Self::Camera(_) | Self::Mic => MediaRole::Encoder,
+            Self::Mirror(_) | Self::Cast(_) | Self::Audio(_) => self.directed_role(),
         }
     }
 
@@ -101,24 +128,12 @@ impl FeatureRequest {
         bitrate_kbps: u32,
     ) -> Option<StreamParams> {
         let limits = match self {
-            Self::Mic => {
-                return audio.map(|codec| {
-                    StreamParams::Audio(AudioParams {
-                        codec,
-                        sample_rate: OPUS_SAMPLE_RATE,
-                        channels: 1,
-                        frame_ms: OPUS_FRAME_MS,
-                    })
-                });
-            }
+            Self::Mic => return audio.map(|codec| opus(codec, 1, VOICE_FRAME_MS)),
+            Self::Audio(_) => return audio.map(|codec| opus(codec, 2, MUSIC_FRAME_MS)),
             Self::Monitor(monitor) => (monitor.width, monitor.height, monitor.refresh_mhz),
-            Self::Mirror(StartMirror { limits, .. }) | Self::Camera(StartCamera { limits, .. }) => {
-                (
-                    limits.max_width,
-                    limits.max_height,
-                    u32::from(limits.max_fps) * 1_000,
-                )
-            }
+            Self::Mirror(StartMirror { limits, .. })
+            | Self::Camera(StartCamera { limits, .. })
+            | Self::Cast(StartCast { limits, .. }) => video_mode(*limits),
         };
         let (width, height, fps_mhz) = limits;
         video.map(|codec| {
@@ -131,6 +146,23 @@ impl FeatureRequest {
             })
         })
     }
+}
+
+const fn opus(codec: AudioCodec, channels: u8, frame_ms: u8) -> StreamParams {
+    StreamParams::Audio(AudioParams {
+        codec,
+        sample_rate: OPUS_SAMPLE_RATE,
+        channels,
+        frame_ms,
+    })
+}
+
+fn video_mode(limits: VideoLimits) -> (u16, u16, u32) {
+    (
+        limits.max_width,
+        limits.max_height,
+        u32::from(limits.max_fps) * 1_000,
+    )
 }
 
 const fn flip(direction: Direction) -> Direction {

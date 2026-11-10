@@ -3,6 +3,8 @@
     reason = "a test that fails a precondition should fail loudly"
 )]
 
+mod support;
+
 use std::collections::HashSet;
 
 use llts_signaling::SignalingError;
@@ -144,6 +146,9 @@ fn every_message() -> Vec<Signal<'static>> {
             feature: Feature::Monitor,
         }),
     ]
+    .into_iter()
+    .chain(support::application_messages())
+    .collect()
 }
 
 #[test]

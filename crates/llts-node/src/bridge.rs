@@ -6,11 +6,11 @@
 
 use core::num::NonZeroU16;
 
-use llts_core::session::{Action, Event};
+use llts_core::session::{Action, Event, Role};
 use llts_core::stream::MediaStreamConfig;
-use llts_core::units::FrameRate;
+use llts_core::units::{Bitrate, FrameRate};
 use llts_signaling::device::{DeviceClass, DeviceId};
-use llts_signaling::message::{MuxClass, StreamParams};
+use llts_signaling::message::{AudioParams, MuxClass, StreamParams};
 use llts_transport::TransportError;
 use llts_transport::pairing::{QrOffer, TrustStore};
 use llts_transport::security::DeviceClass as TransportClass;
@@ -120,7 +120,7 @@ pub fn execute<T: TrustStore>(
                     frame_rate: frame_rate(video.fps_mhz),
                     ..MediaStreamConfig::screen_share(role)
                 },
-                StreamParams::Audio(_) => MediaStreamConfig::opus_voice(role),
+                StreamParams::Audio(audio) => opus_config(role, audio),
             };
             session(driver, peer)?
                 .open_media(key, config)
@@ -156,6 +156,23 @@ pub const fn driver_class(class: DeviceClass) -> TransportClass {
         DeviceClass::Computer => TransportClass::Laptop,
         DeviceClass::Watch => TransportClass::Other,
     }
+}
+
+/// The transport configuration of an Opus stream with `params`: the packet rate of its frame
+/// size, and the bitrate its encoder is fixed to reserved.
+fn opus_config(role: Role, params: AudioParams) -> MediaStreamConfig {
+    const VOICE_KBPS: u32 = 64;
+    const STEREO_KBPS: u32 = 128;
+    let kilobits = if params.channels == 2 {
+        STEREO_KBPS
+    } else {
+        VOICE_KBPS
+    };
+    let frame = FrameRate::from_opus_frame_ms(params.frame_ms).unwrap_or(FrameRate::OPUS_10_MS);
+    Bitrate::from_kilobits_per_second(kilobits).map_or_else(
+        || MediaStreamConfig::opus_voice(role),
+        |bitrate| MediaStreamConfig::opus(role, frame, bitrate),
+    )
 }
 
 /// Rounds a millihertz rate to whole hertz, never below one.

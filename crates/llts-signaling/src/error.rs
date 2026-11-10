@@ -37,4 +37,34 @@ pub enum SignalingError {
 
     #[error("the operating system has no entropy to draw from")]
     Entropy(#[from] getrandom::Error),
+
+    #[error("{field} is {len} bytes, above the {limit}-byte limit")]
+    FieldTooLong {
+        field: &'static str,
+        len: usize,
+        limit: usize,
+    },
+
+    #[error("{field} has {count} entries, above the limit of {limit}")]
+    TooManyEntries {
+        field: &'static str,
+        count: usize,
+        limit: usize,
+    },
+
+    #[error("{field} is out of range")]
+    OutOfRange { field: &'static str },
+
+    #[error("a {len}-byte {topic:?} document exceeds the {limit}-byte limit")]
+    DocumentTooLarge {
+        topic: Topic,
+        len: usize,
+        limit: usize,
+    },
+
+    #[error("the blob key is malformed")]
+    MalformedBlobKey,
+
+    #[error("the URI's scheme is not one a peer may open")]
+    UriSchemeRefused,
 }
