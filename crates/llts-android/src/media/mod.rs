@@ -31,18 +31,18 @@ pub(crate) const fn implements(feature: Feature) -> bool {
         | Feature::Notifications
         | Feature::Battery
         | Feature::Hotspot
-        | Feature::Files => true,
-        Feature::Messages
+        | Feature::Files
+        | Feature::Messages
         | Feature::CallHistory
         | Feature::Contacts
-        | Feature::Capture
+        | Feature::Links => true,
+        Feature::Capture
         | Feature::DragDrop
         | Feature::Cast
         | Feature::AudioHandoff
         | Feature::Focus
         | Feature::LiveActivities
         | Feature::WifiSharing
-        | Feature::FindMy
-        | Feature::Links => false,
+        | Feature::FindMy => false,
     }
 }
