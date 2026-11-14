@@ -189,6 +189,12 @@ impl Node {
             }
             AppCommand::ConfirmPairing { peer, accept } => self.confirm_pairing(peer, accept),
             AppCommand::Forget { peer } => self.forget(peer),
+            AppCommand::Trust {
+                peer,
+                name,
+                class,
+                addresses,
+            } => self.trust(peer, name, class, addresses),
             AppCommand::SetFeature {
                 peer,
                 feature,

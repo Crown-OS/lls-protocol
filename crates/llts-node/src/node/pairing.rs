@@ -3,7 +3,7 @@
 use core::time::Duration;
 use std::net::SocketAddr;
 
-use llts_signaling::device::DeviceId;
+use llts_signaling::device::{DeviceClass, DeviceId};
 use llts_signaling::discovery::PairingNonce;
 use llts_signaling::message::{Goodbye, GoodbyeReason, Signal};
 use llts_transport::canonical_address;
@@ -171,6 +171,31 @@ impl Node {
             peer,
             enabled,
         }));
+        Ok(())
+    }
+
+    /// Trusts a device another authenticated channel vouched for: it joins the table as a
+    /// paired peer, the driver's trust store learns its key, and it is dialled where the
+    /// introducer says it is.
+    pub(super) fn trust(
+        &mut self,
+        peer: DeviceId,
+        name: &str,
+        class: DeviceClass,
+        addresses: &[SocketAddr],
+    ) -> Result<(), NodeError> {
+        self.adopt(peer)?;
+        if let Some(entry) = self.peers.get_mut(&peer) {
+            entry.name = name.to_owned();
+            entry.class = class;
+            entry.sightings.seen(addresses);
+        }
+        self.command(DriverCommand::Trust {
+            peer,
+            name: name.to_owned(),
+            class,
+        });
+        self.dial(peer);
         Ok(())
     }
 

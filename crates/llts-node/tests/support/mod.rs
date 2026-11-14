@@ -654,6 +654,9 @@ impl Sim {
                     session.streams.remove(&stream);
                 }
             }
+            DriverCommand::Trust { peer, name, .. } => {
+                self.nodes[from].trusted.insert(peer, name);
+            }
             DriverCommand::Forget { peer } => {
                 self.nodes[from].trusted.remove(&peer);
                 if self.nodes[from].sessions.remove(&peer).is_some()

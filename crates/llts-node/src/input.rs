@@ -104,6 +104,14 @@ pub enum AppCommand<'a> {
     Forget {
         peer: DeviceId,
     },
+    /// Trusts a device introduced over another authenticated channel, with no pairing
+    /// ceremony, and dials it at `addresses`.
+    Trust {
+        peer: DeviceId,
+        name: &'a str,
+        class: DeviceClass,
+        addresses: &'a [SocketAddr],
+    },
     SetFeature {
         peer: DeviceId,
         feature: Feature,

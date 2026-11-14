@@ -323,6 +323,33 @@ impl<T: TrustStore> Driver<T> {
         self.state.trust.remove(peer)
     }
 
+    /// Trusts `peer` on the caller's word, as a finished pairing would: for a device introduced
+    /// over another authenticated channel, such as a tailnet. What was known about the key is
+    /// replaced; a reconnect timestamp already recorded is kept, so nothing old replays.
+    ///
+    /// # Errors
+    ///
+    /// Fails when the trust store cannot be written.
+    pub fn introduce(
+        &mut self,
+        peer: StaticKey,
+        name: &str,
+        class: DeviceClass,
+    ) -> Result<(), TransportError> {
+        let last_handshake = self
+            .state
+            .trust
+            .peer(&peer)
+            .and_then(|known| known.last_handshake);
+        self.state.trust.upsert(TrustedPeer {
+            static_key: peer,
+            name: name.to_owned(),
+            class,
+            last_handshake,
+            paired_at_unix: unix_now(),
+        })
+    }
+
     /// The codes did not match, or the user declined: forget the peer.
     pub fn reject_pairing(&mut self, peer: &StaticKey) {
         self.state

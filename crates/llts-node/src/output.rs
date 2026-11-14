@@ -81,6 +81,12 @@ pub enum DriverCommand {
     Forget {
         peer: DeviceId,
     },
+    /// Put `peer` in the trust store on the application's word.
+    Trust {
+        peer: DeviceId,
+        name: String,
+        class: DeviceClass,
+    },
     Rebind {
         local: SocketAddr,
     },

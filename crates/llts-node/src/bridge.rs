@@ -19,7 +19,7 @@ use llts_transport::session::{Driver, DriverEvent};
 use crate::NodeError;
 use crate::input::LinkEvent;
 use crate::output::DriverCommand;
-use crate::util::device::{class_from_transport, device_id, static_key};
+use crate::util::device::{class_from_transport, device_id, static_key, transport_class};
 use crate::util::stream::{stream_key, stream_ref};
 
 /// What a driver event means to the node; `None` for session actions the runtime handles
@@ -133,6 +133,9 @@ pub fn execute<T: TrustStore>(
         }
         DriverCommand::Forget { peer } => {
             let _ = driver.forget(&static_key(peer))?;
+        }
+        DriverCommand::Trust { peer, name, class } => {
+            driver.introduce(static_key(peer), &name, transport_class(class))?;
         }
         DriverCommand::Rebind { local } => driver.rebind(local)?,
     }
