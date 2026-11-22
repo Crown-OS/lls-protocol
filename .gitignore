@@ -7,3 +7,6 @@
 .direnv/
 /fuzz/target
 /fuzz/artifacts
+
+# Playwright MCP session output.
+.playwright-mcp/
