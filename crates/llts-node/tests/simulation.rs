@@ -18,7 +18,7 @@ use llts_node::{
     AppCommand, AppEvent, FeatureFailure, FeatureRequest, FeatureState, MediaRequest, MediaRole,
     NodeInput, OutgoingCommand, RemoteCommand,
 };
-use llts_signaling::device::{DeviceClass, Feature};
+use llts_signaling::device::{DeviceClass, Feature, FeatureSet};
 use llts_signaling::discovery::Beacon;
 use llts_signaling::message::{
     AudioCodec, AudioParams, Call, CameraLens, Direction, FetchBlob, Lane, ListConversations,
@@ -707,6 +707,133 @@ fn commands_reach_the_peer_only_for_features_both_allow() {
             ..
         }
     )));
+}
+
+const fn mirror_from_peer(remote_input: bool) -> FeatureRequest {
+    FeatureRequest::Mirror(StartMirror {
+        direction: Direction::FromPeer,
+        limits: LIMITS,
+        remote_input,
+    })
+}
+
+fn revoke(sim: &mut Sim, index: usize, peer: usize, feature: Feature) {
+    let peer = sim.id(peer);
+    sim.app(
+        index,
+        AppCommand::SetFeature {
+            peer,
+            feature,
+            enabled: false,
+        },
+    );
+}
+
+#[test]
+fn a_mirror_that_takes_input_needs_the_remote_input_grant() {
+    let mut sim = paired();
+    let (laptop, phone) = (sim.id(LAPTOP), sim.id(PHONE));
+    revoke(&mut sim, LAPTOP, PHONE, Feature::RemoteInput);
+
+    sim.app(
+        LAPTOP,
+        AppCommand::StartFeature {
+            peer: phone,
+            request: FeatureRequest::Mirror(StartMirror {
+                direction: Direction::ToPeer,
+                limits: LIMITS,
+                remote_input: true,
+            }),
+        },
+    );
+    assert_eq!(
+        failures(&sim, LAPTOP, Feature::Mirror),
+        [FeatureFailure::Unavailable]
+    );
+
+    sim.app(
+        PHONE,
+        AppCommand::StartFeature {
+            peer: laptop,
+            request: mirror_from_peer(true),
+        },
+    );
+    assert!(sim.nodes[LAPTOP].media.is_empty());
+    assert_eq!(
+        failures(&sim, PHONE, Feature::Mirror),
+        [FeatureFailure::Refused]
+    );
+
+    sim.app(
+        PHONE,
+        AppCommand::StartFeature {
+            peer: laptop,
+            request: mirror_from_peer(false),
+        },
+    );
+    assert!(matches!(
+        sim.nodes[LAPTOP].media.last(),
+        Some(MediaRequest::Start {
+            role: MediaRole::Encoder,
+            request: FeatureRequest::Mirror(StartMirror {
+                remote_input: false,
+                ..
+            }),
+            ..
+        })
+    ));
+}
+
+#[test]
+fn locking_volume_and_media_keys_need_the_device_control_grant() {
+    let mut sim = paired();
+    let phone = sim.id(PHONE);
+    revoke(&mut sim, PHONE, LAPTOP, Feature::DeviceControl);
+
+    for command in [OutgoingCommand::Lock, OutgoingCommand::Media(Media::Pause)] {
+        sim.app(
+            LAPTOP,
+            AppCommand::Send {
+                peer: phone,
+                command,
+            },
+        );
+    }
+    assert!(
+        !sim.nodes[PHONE]
+            .events
+            .iter()
+            .any(|event| matches!(event, AppEvent::RemoteCommand { .. }))
+    );
+}
+
+#[test]
+fn grants_hold_for_a_peer_that_does_not_announce_them() {
+    let mut older = capabilities(&[VideoCodec::Hevc], DeviceClass::Phone);
+    older.features = older.features.difference(FeatureSet::GRANTS);
+    let mut sim = Sim::new(&[
+        (
+            "laptop",
+            capabilities(&[VideoCodec::Hevc], DeviceClass::Computer),
+        ),
+        ("phone", older),
+    ]);
+    sim.pair_by_qr(LAPTOP, PHONE);
+    let (laptop, phone) = (sim.id(LAPTOP), sim.id(PHONE));
+
+    sim.app(
+        LAPTOP,
+        AppCommand::Send {
+            peer: phone,
+            command: OutgoingCommand::Lock,
+        },
+    );
+    assert!(sim.nodes[PHONE].events.iter().any(|event| matches!(
+        event,
+        AppEvent::RemoteCommand { peer, command: RemoteCommand::Lock } if *peer == laptop
+    )));
+    let available = sim.nodes[LAPTOP].node.device(&phone).unwrap().available;
+    assert!(available.contains(Feature::RemoteInput));
 }
 
 #[test]

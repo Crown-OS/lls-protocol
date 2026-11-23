@@ -10,11 +10,19 @@ use crate::feature::{ActiveFeature, FeatureRequest, FeatureState, MediaRole, Pen
 use crate::output::{
     AppEvent, DriverCommand, FeatureFailure, MediaRequest, NodeOutput, PersistRequest,
 };
-use crate::peer::Session;
+use crate::peer::{Peer, Session};
 use crate::util::stream::CONTROL;
 use crate::{Node, NodeError};
 
 impl Node {
+    /// Whether `peer` may have `request` run with this device in `role`: the feature itself, and
+    /// the `RemoteInput` grant when this device's seat would take the peer's input.
+    fn allows(&self, peer: &Peer, request: &FeatureRequest, role: MediaRole) -> bool {
+        let shared = self.shared_features(peer);
+        shared.contains(request.feature())
+            && (!request.hands_seat_to_peer(role) || shared.contains(Feature::RemoteInput))
+    }
+
     pub(super) fn set_feature(
         &mut self,
         peer: DeviceId,
@@ -67,11 +75,10 @@ impl Node {
             return Ok(());
         }
         let entry = self.peers.get(&peer).ok_or(NodeError::UnknownPeer(peer))?;
+        let role = request.requester_role();
         let failure = match &entry.session {
             None => Some(FeatureFailure::NotConnected),
-            Some(_) if !self.shared_features(entry).contains(feature) => {
-                Some(FeatureFailure::Unavailable)
-            }
+            Some(_) if !self.allows(entry, &request, role) => Some(FeatureFailure::Unavailable),
             Some(session) if session.features.get(feature).is_some() => {
                 Some(FeatureFailure::AlreadyActive)
             }
@@ -85,7 +92,6 @@ impl Node {
             });
             return Ok(());
         }
-        let role = request.requester_role();
         let proposal = match role {
             MediaRole::Encoder => match self.proposal(peer, &request) {
                 Some(proposal) => Some(proposal),
@@ -184,7 +190,7 @@ impl Node {
         let Some(entry) = self.peers.get(&peer) else {
             return Ok(());
         };
-        let allowed = self.shared_features(entry).contains(feature)
+        let allowed = self.allows(entry, &request, request.responder_role())
             && entry
                 .session
                 .as_ref()

@@ -8,6 +8,7 @@ use llts_signaling::state::{
     TopicSet,
 };
 
+use super::offered;
 use crate::output::{AppEvent, FeatureFailure};
 use crate::sync::{encode, encode_snapshot, topics_for};
 use crate::util::stream::{CONTROL, STATE};
@@ -140,7 +141,7 @@ impl Node {
             return Ok(());
         };
         let shared = self.shared_features(entry);
-        let served = topics_for(self.local.capabilities.features.shared_with(entry.enabled));
+        let served = topics_for(offered(self.local.capabilities.features, entry.enabled));
         let Some(session) = self
             .peers
             .get_mut(&peer)
@@ -186,10 +187,11 @@ impl Node {
         peer: DeviceId,
         topics: TopicSet,
     ) -> Result<(), NodeError> {
+        let implemented = self.local.capabilities.features;
         let Some(entry) = self.peers.get_mut(&peer) else {
             return Ok(());
         };
-        let served = topics_for(self.local.capabilities.features.shared_with(entry.enabled));
+        let served = topics_for(offered(implemented, entry.enabled));
         let Some(session) = entry.session.as_mut() else {
             return Ok(());
         };

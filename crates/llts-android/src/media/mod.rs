@@ -35,7 +35,9 @@ pub(crate) const fn implements(feature: Feature) -> bool {
         | Feature::Messages
         | Feature::CallHistory
         | Feature::Contacts
-        | Feature::Links => true,
+        | Feature::Links
+        | Feature::RemoteInput
+        | Feature::DeviceControl => true,
         Feature::Capture
         | Feature::DragDrop
         | Feature::Cast

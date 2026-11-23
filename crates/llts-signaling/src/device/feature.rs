@@ -29,10 +29,14 @@ pub enum Feature {
     WifiSharing,
     FindMy,
     Links,
+    /// The peer's pointer and keys reach this device's seat while a mirror or monitor runs.
+    RemoteInput,
+    /// The peer may lock this device, change its volume and control its media.
+    DeviceControl,
 }
 
 impl Feature {
-    pub const ALL: [Self; 23] = [
+    pub const ALL: [Self; 25] = [
         Self::Mirror,
         Self::Camera,
         Self::Mic,
@@ -56,6 +60,8 @@ impl Feature {
         Self::WifiSharing,
         Self::FindMy,
         Self::Links,
+        Self::RemoteInput,
+        Self::DeviceControl,
     ];
 
     /// The feature whose [`FeatureSet`] bit is `index`, the number messages name features by.
@@ -95,6 +101,12 @@ impl FeatureSet {
         .with(Feature::FindMy)
         .with(Feature::Links);
 
+    /// Permissions rather than capabilities: only the user's choice for the peer decides them,
+    /// so a peer that has not heard of them does not lose them.
+    pub const GRANTS: Self = Self::EMPTY
+        .with(Feature::RemoteInput)
+        .with(Feature::DeviceControl);
+
     /// What a newly paired device starts with.
     pub const DEFAULT: Self = Self::EVERY.difference(Self::PERSONAL);
 
@@ -117,6 +129,11 @@ impl FeatureSet {
     #[must_use]
     pub const fn shared_with(self, peer: Self) -> Self {
         Self(self.0 & peer.0)
+    }
+
+    #[must_use]
+    pub const fn union(self, other: Self) -> Self {
+        Self(self.0 | other.0)
     }
 
     #[must_use]

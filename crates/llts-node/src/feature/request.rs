@@ -121,6 +121,20 @@ impl FeatureRequest {
         }
     }
 
+    /// Whether running `role` lets the peer's input reach this device's seat.
+    pub(crate) const fn hands_seat_to_peer(&self, role: MediaRole) -> bool {
+        matches!(
+            (self, role),
+            (
+                Self::Mirror(StartMirror {
+                    remote_input: true,
+                    ..
+                }),
+                MediaRole::Encoder
+            )
+        )
+    }
+
     pub(crate) fn params(
         &self,
         video: Option<VideoCodec>,

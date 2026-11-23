@@ -227,14 +227,12 @@ impl Node {
         }
     }
 
-    /// Features both ends implement and this device allows `peer`, for a live session.
+    /// What this device offers `peer` that the peer implements too, for a live session. A grant
+    /// needs nothing from the peer.
     fn shared_features(&self, peer: &Peer) -> FeatureSet {
         peer.session.as_ref().map_or(FeatureSet::EMPTY, |session| {
-            self.local
-                .capabilities
-                .features
-                .shared_with(peer.enabled)
-                .shared_with(session.peer_features())
+            offered(self.local.capabilities.features, peer.enabled)
+                .shared_with(session.peer_features().union(FeatureSet::GRANTS))
         })
     }
 
@@ -286,4 +284,10 @@ impl Node {
             discovery,
         )
     }
+}
+
+/// What a device that implements `implemented` offers a peer the user allows `enabled`: the
+/// grants need no implementation.
+const fn offered(implemented: FeatureSet, enabled: FeatureSet) -> FeatureSet {
+    implemented.union(FeatureSet::GRANTS).shared_with(enabled)
 }

@@ -267,6 +267,9 @@ pub(crate) const fn command_feature(signal: &Signal<'_>) -> Option<Feature> {
         Signal::SetHotspotV1(_) => Some(Feature::Hotspot),
         Signal::FileOfferV1(_) => Some(Feature::Files),
         Signal::UnicursorEnterV1(_) | Signal::UnicursorLeaveV1(_) => Some(Feature::Unicursor),
+        Signal::MediaV1(_) | Signal::SetVolumeV1(_) | Signal::LockV1(_) => {
+            Some(Feature::DeviceControl)
+        }
         _ => None,
     }
 }

@@ -25,6 +25,25 @@ impl PeerFeatureStore {
         Ok(Self { path, entries })
     }
 
+    /// The store at `path`, or the one at `legacy` from before [`FeatureSet::GRANTS`] existed,
+    /// with every grant given to each device, as the old build gave them implicitly.
+    pub(crate) fn open_or_upgrade(
+        path: impl Into<PathBuf>,
+        legacy: &Path,
+    ) -> Result<Self, BridgeError> {
+        let path = path.into();
+        if path.exists() || !legacy.exists() {
+            return Self::open(path);
+        }
+        let mut store = Self::open(legacy)?;
+        store.path = path;
+        for (_, enabled) in &mut store.entries {
+            *enabled = enabled.union(FeatureSet::GRANTS);
+        }
+        store.save()?;
+        Ok(store)
+    }
+
     pub(crate) fn enabled(&self, peer: &DeviceId) -> Option<FeatureSet> {
         self.entries
             .iter()
@@ -87,6 +106,32 @@ mod tests {
         assert_eq!(removed, Some(true));
         let after = PeerFeatureStore::open(&path).ok();
         assert_eq!(after.and_then(|store| store.enabled(&peer)), None);
+        let _ = fs::remove_dir_all(&directory);
+    }
+
+    #[test]
+    fn a_store_from_before_the_grants_gives_every_device_the_grants() {
+        let directory =
+            std::env::temp_dir().join(format!("llts-android-grants-{}", std::process::id()));
+        let _ = fs::create_dir_all(&directory);
+        let legacy = directory.join("peer_features.bin");
+        let path = directory.join("peer_features-v2.bin");
+        let _ = fs::remove_file(&path);
+        let peer = DeviceId([5; 32]);
+        let enabled = FeatureSet::EMPTY.with(Feature::Battery);
+        let stored = PeerFeatureStore::open(&legacy).and_then(|mut store| store.set(peer, enabled));
+        assert!(stored.is_ok());
+
+        let upgraded = PeerFeatureStore::open_or_upgrade(&path, &legacy).ok();
+        assert_eq!(
+            upgraded.and_then(|store| store.enabled(&peer)),
+            Some(enabled.union(FeatureSet::GRANTS))
+        );
+        let reopened = PeerFeatureStore::open(&path).ok();
+        assert_eq!(
+            reopened.and_then(|store| store.enabled(&peer)),
+            Some(enabled.union(FeatureSet::GRANTS))
+        );
         let _ = fs::remove_dir_all(&directory);
     }
 }

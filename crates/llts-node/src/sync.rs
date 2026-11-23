@@ -8,14 +8,11 @@ use llts_signaling::state::{Topic, TopicSet};
 use crate::NodeError;
 
 /// Documents every paired device shares, whatever features it allows.
-const ALWAYS_SHARED: TopicSet = TopicSet::EMPTY
-    .with(Topic::DeviceInfo)
-    .with(Topic::MediaSession)
-    .with(Topic::Volume);
+const ALWAYS_SHARED: TopicSet = TopicSet::EMPTY.with(Topic::DeviceInfo);
 
 /// Each topic is gated by exactly one feature: the publisher is shared by every peer, so a
 /// document cannot be redacted for one of them.
-const FEATURE_TOPICS: [(Feature, Topic); 8] = [
+const FEATURE_TOPICS: [(Feature, Topic); 10] = [
     (Feature::Battery, Topic::Battery),
     (Feature::Calls, Topic::CallState),
     (Feature::Notifications, Topic::Notifications),
@@ -24,6 +21,8 @@ const FEATURE_TOPICS: [(Feature, Topic); 8] = [
     (Feature::Focus, Topic::Focus),
     (Feature::LiveActivities, Topic::LiveActivities),
     (Feature::AudioHandoff, Topic::AudioRoutes),
+    (Feature::DeviceControl, Topic::MediaSession),
+    (Feature::DeviceControl, Topic::Volume),
 ];
 
 /// Bytes an update adds around its payload: topic, version and length prefixes, generously.
@@ -125,5 +124,8 @@ mod tests {
         assert!(topics.contains(Topic::Battery));
         assert!(topics.contains(Topic::DeviceInfo));
         assert!(!topics.contains(Topic::Clipboard));
+        assert!(!topics.contains(Topic::MediaSession));
+        let controlled = topics_for(FeatureSet::EMPTY.with(Feature::DeviceControl));
+        assert!(controlled.contains(Topic::MediaSession) && controlled.contains(Topic::Volume));
     }
 }

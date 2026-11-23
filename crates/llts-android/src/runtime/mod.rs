@@ -57,7 +57,10 @@ impl Instance {
         fs::create_dir_all(&directory)?;
         let mut trust = FileTrustStore::open(directory.join("trust.bin"))?;
         let identity = trust.identity_or_generate()?;
-        let features = PeerFeatureStore::open(directory.join("peer_features.bin"))?;
+        let features = PeerFeatureStore::open_or_upgrade(
+            directory.join("peer_features-v2.bin"),
+            &directory.join("peer_features.bin"),
+        )?;
         let ffsp = FfspLinks::new(&files_dir.join("ffsp"));
         ffsp.adopt_identity(&identity)?;
         let node_config = NodeConfig::default();

@@ -52,6 +52,8 @@ fn feature_bits_and_their_postcard_indices_never_move() {
         (Feature::WifiSharing, 20),
         (Feature::FindMy, 21),
         (Feature::Links, 22),
+        (Feature::RemoteInput, 23),
+        (Feature::DeviceControl, 24),
     ];
     assert_eq!(pinned.map(|(feature, _)| feature), Feature::ALL);
     for (feature, index) in pinned {
@@ -59,7 +61,7 @@ fn feature_bits_and_their_postcard_indices_never_move() {
         assert_eq!(Feature::from_bit(index), Some(feature));
         assert_eq!(postcard::to_allocvec(&feature).unwrap(), [index]);
     }
-    assert_eq!(Feature::from_bit(23), None);
+    assert_eq!(Feature::from_bit(25), None);
 }
 
 #[test]
