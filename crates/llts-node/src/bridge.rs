@@ -134,8 +134,13 @@ pub fn execute<T: TrustStore>(
         DriverCommand::Forget { peer } => {
             let _ = driver.forget(&static_key(peer))?;
         }
-        DriverCommand::Trust { peer, name, class } => {
-            driver.introduce(static_key(peer), &name, transport_class(class))?;
+        DriverCommand::Trust {
+            peer,
+            name,
+            class,
+            sources,
+        } => {
+            driver.introduce(static_key(peer), &name, transport_class(class), &sources)?;
         }
         DriverCommand::Rebind { local } => driver.rebind(local)?,
     }

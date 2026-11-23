@@ -86,6 +86,8 @@ pub enum DriverCommand {
         peer: DeviceId,
         name: String,
         class: DeviceClass,
+        /// The addresses the channel that introduced the peer vouched for.
+        sources: Vec<SocketAddr>,
     },
     Rebind {
         local: SocketAddr,

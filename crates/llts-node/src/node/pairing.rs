@@ -194,6 +194,7 @@ impl Node {
             peer,
             name: name.to_owned(),
             class,
+            sources: addresses.to_vec(),
         });
         self.dial(peer);
         Ok(())

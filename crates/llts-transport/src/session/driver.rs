@@ -15,6 +15,7 @@ use super::connection::{CachedReply, Commitment, Connection, Resend};
 use super::event::DriverEvent;
 use super::framing::handshake_datagram;
 use super::handshaking::{InProgress, PendingHandshake};
+use super::source_pins::SourcePins;
 use crate::pairing::{
     HandshakeRateLimiter, PairingMode, PairingWindow, QrOffer, TrustStore, TrustedPeer,
 };
@@ -91,6 +92,7 @@ struct DriverState<T> {
     pools: SessionPools,
     connections: Vec<Connection>,
     handshakes: Vec<PendingHandshake>,
+    pins: SourcePins,
     pairing: PairingWindow,
     limiter: HandshakeRateLimiter,
     events: VecDeque<DriverEvent>,
@@ -136,6 +138,7 @@ impl<T: TrustStore> Driver<T> {
                 pools,
                 connections: Vec::new(),
                 handshakes: Vec::new(),
+                pins: SourcePins::default(),
                 pairing: PairingWindow::new(),
                 limiter: HandshakeRateLimiter::new(),
                 events: VecDeque::new(),
@@ -320,12 +323,15 @@ impl<T: TrustStore> Driver<T> {
         self.state
             .handshakes
             .retain(|handshake| handshake.state.reconnecting_to() != Some(peer));
+        self.state.pins.lift(peer);
         self.state.trust.remove(peer)
     }
 
     /// Trusts `peer` on the caller's word, as a finished pairing would: for a device introduced
     /// over another authenticated channel, such as a tailnet. What was known about the key is
-    /// replaced; a reconnect timestamp already recorded is kept, so nothing old replays.
+    /// replaced; a reconnect timestamp already recorded is kept, so nothing old replays. While
+    /// this driver runs, the peer is admitted only from the hosts of `sources`, the addresses
+    /// that channel vouched for; none admits it from anywhere.
     ///
     /// # Errors
     ///
@@ -335,7 +341,9 @@ impl<T: TrustStore> Driver<T> {
         peer: StaticKey,
         name: &str,
         class: DeviceClass,
+        sources: &[SocketAddr],
     ) -> Result<(), TransportError> {
+        self.state.pins.pin(peer, sources);
         let last_handshake = self
             .state
             .trust
@@ -554,6 +562,7 @@ impl<T: TrustStore> DriverState<T> {
     }
 
     fn trust_peer(&mut self, peer: StaticKey, hello: &Hello) -> Result<(), TransportError> {
+        self.pins.lift(&peer);
         let last_handshake = self
             .trust
             .peer(&peer)
@@ -590,6 +599,9 @@ impl<T: TrustStore> DriverState<T> {
         let Some(connection) = self.connections.get_mut(index) else {
             return;
         };
+        if !self.pins.admits(&connection.peer, from) {
+            return;
+        }
         let Ok(len) = connection.keys.receiving.open(bytes, now) else {
             return;
         };
@@ -770,7 +782,7 @@ impl<T: TrustStore> DriverState<T> {
         let tag = self.allocate_tag();
         let hello = self.hello(tag);
         let mut out = [0u8; NoiseHandshake::MAX_MESSAGE_LEN];
-        let (trust, connections) = (&self.trust, &self.connections);
+        let (trust, connections, pins) = (&self.trust, &self.connections, &self.pins);
         let (accepted, len) = ReconnectResponder::accept(
             &self.identity,
             &hello,
@@ -779,6 +791,11 @@ impl<T: TrustStore> DriverState<T> {
             |peer, timestamp| {
                 if trust.peer(peer).is_none() {
                     return Err(TransportError::UnknownPeer);
+                }
+                if !pins.admits(peer, from) {
+                    return Err(TransportError::HandshakeRejected {
+                        reason: "the peer is pinned to other addresses",
+                    });
                 }
                 let pending_newer = connections.iter().any(|connection| {
                     connection.peer == *peer
@@ -924,6 +941,11 @@ impl<T: TrustStore> DriverState<T> {
         view: &HandshakeView<'_>,
     ) -> Result<(), TransportError> {
         check_tag(&established.peer_hello, view)?;
+        if !self.pins.admits(&established.peer, from) {
+            return Err(TransportError::HandshakeRejected {
+                reason: "the peer is pinned to other addresses",
+            });
+        }
         let core = self.new_session(tag, &established.peer_hello);
         let peer = established.peer;
         let hello = established.peer_hello.clone();

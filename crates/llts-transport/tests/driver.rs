@@ -475,3 +475,46 @@ fn connecting_to_an_unpaired_device_is_refused_locally() {
     let mut laptop = driver("laptop");
     laptop.connect(StaticKey([1u8; 32]), loopback()).unwrap();
 }
+
+#[test]
+fn an_introduced_peer_is_admitted_only_from_the_hosts_it_was_vouched_for() {
+    let (mut laptop, mut phone) = (driver("laptop"), driver("phone"));
+    let laptop_key = *laptop.identity().public();
+    let phone_key = *phone.identity().public();
+    let laptop_address = laptop.local_addr().unwrap();
+    let elsewhere = SocketAddr::from((Ipv4Addr::new(127, 0, 0, 2), laptop_address.port()));
+    laptop
+        .introduce(phone_key, "phone", DeviceClass::Phone, &[])
+        .unwrap();
+    phone
+        .introduce(laptop_key, "laptop", DeviceClass::Laptop, &[elsewhere])
+        .unwrap();
+    let (mut laptop_seen, mut phone_seen) = (Seen::default(), Seen::default());
+
+    laptop
+        .connect(phone_key, phone.local_addr().unwrap())
+        .unwrap();
+    assert!(!run_until(
+        &mut laptop,
+        &mut phone,
+        &mut laptop_seen,
+        &mut phone_seen,
+        Duration::from_millis(1_500),
+        |left, right| left.connected + right.connected > 0
+    ));
+
+    phone
+        .introduce(laptop_key, "laptop", DeviceClass::Laptop, &[laptop_address])
+        .unwrap();
+    laptop
+        .connect(phone_key, phone.local_addr().unwrap())
+        .unwrap();
+    assert!(run_until(
+        &mut laptop,
+        &mut phone,
+        &mut laptop_seen,
+        &mut phone_seen,
+        Duration::from_secs(5),
+        |left, right| left.connected == 1 && right.connected == 1
+    ));
+}

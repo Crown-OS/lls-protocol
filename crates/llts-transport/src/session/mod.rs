@@ -5,6 +5,7 @@ mod driver;
 mod event;
 mod framing;
 mod handshaking;
+mod source_pins;
 
 pub use driver::{Driver, DriverConfig};
 pub use event::DriverEvent;
